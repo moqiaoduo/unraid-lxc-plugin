@@ -11,3 +11,5 @@ dist/
 .idea/
 .vscode/
 /tmp/
+.dsh/plans
+.dsh/tmp
