@@ -1,7 +1,7 @@
 <?xml version='1.0' standalone='yes'?>
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "lxc">
-  <!ENTITY author    "jaygz316">
+  <!ENTITY author    "moqiaoduo">
   <!ENTITY version   "2026.09.17">
   <!ENTITY launch    "Settings/LXCSettings">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;-plugin/raw/master">
@@ -640,7 +640,7 @@ fi
 #Set variables and get version numbers
 LXC_DATADIRECTORY="$(cat &plugin;/lxc.conf | grep -n "lxc.lxcpath" | cut -d '=' -f2 | sed 's/\"//g')"
 LXC_SERVICE="$(cat &plugin;/plugin.cfg | grep -nw "SERVICE" | cut -d '=' -f2 | sed 's/\"//g')"
-LAT_V="$(wget -qO- https://api.github.com/repos/jaygz316/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
+LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
 CUR_V="$(ls &plugin;/packages/LXC-*-${BUILD_IDX}.txz 2>/dev/null | sort -V | tail -1 | cut -d '-' -f2)"
 
 if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
@@ -652,7 +652,7 @@ if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
     fi
   fi
 else
-  DL_URL="https://github.com/jaygz316/unraid-lxc-plugin/releases/download/$LAT_V"
+  DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/$LAT_V"
 fi
 
 if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then

@@ -1,8 +1,8 @@
 #!/bin/bash
 # get versions
 CUR_V="$(lxc-info --version 2>/dev/null)"
-LAT_V="$(wget -qO- https://api.github.com/repos/jaygz316/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
-DL_BASE="https://github.com/jaygz316/unraid-lxc-plugin/releases/download"
+LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
+DL_BASE="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download"
 
 if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
   LAT_V="$(wget -qO- https://api.github.com/repos/ich777/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"

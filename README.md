@@ -1,7 +1,7 @@
 # Unraid LXC Plugin
 
-[![Release Plugin](https://github.com/jaygz316/unraid-lxc-plugin/actions/workflows/release-plugin.yml/badge.svg)](https://github.com/jaygz316/unraid-lxc-plugin/actions/workflows/release-plugin.yml)
-[![GitHub Release](https://img.shields.io/github/v/release/jaygz316/unraid-lxc-plugin?include_prereleases)](https://github.com/jaygz316/unraid-lxc-plugin/releases)
+[![Release Plugin](https://github.com/moqiaoduo/unraid-lxc-plugin/actions/workflows/release-plugin.yml/badge.svg)](https://github.com/moqiaoduo/unraid-lxc-plugin/actions/workflows/release-plugin.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/moqiaoduo/unraid-lxc-plugin?include_prereleases)](https://github.com/moqiaoduo/unraid-lxc-plugin/releases)
 
 A modern, native management plugin for running **Linux Containers (LXC)** on [Unraid](https://unraid.net).
 
@@ -36,7 +36,7 @@ LXC is a lightweight operating-system-level virtualization technology that allow
 1. In the Unraid WebGUI, navigate to **Plugins** > **Install Plugin**.
 2. Paste the plugin URL into the URL field:
    ```text
-   https://raw.githubusercontent.com/jaygz316/unraid-lxc-plugin/master/lxc.plg
+   https://raw.githubusercontent.com/moqiaoduo/unraid-lxc-plugin/master/lxc.plg
    ```
 3. Click **Install**.
 
