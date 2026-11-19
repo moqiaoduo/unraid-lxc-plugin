@@ -55,7 +55,14 @@ echo "MD5 Checksum:    ${MD5}"
 # Update lxc.plg with new version and MD5
 if [ -f "${PLG_FILE}" ]; then
   echo "Updating ${PLG_FILE}..."
-  sed -i -E "s/(<!ENTITY version\s+\")[^\"]+(\">)/\1${VERSION}\2/" "${PLG_FILE}"
-  sed -i -E "s/(<!ENTITY md5\s+\")[^\"]+(\">)/\1${MD5}\2/" "${PLG_FILE}"
+  # awk rather than sed: "\" inside a double-quoted sed expression reads as "
+  # on macOS sed and as a literal backslash-quote on GNU sed, so the same
+  # expression edited the manifest on one platform and silently left it alone
+  # on the other. awk has no such difference.
+  awk -v v="${VERSION}" -v m="${MD5}" '
+    /<!ENTITY version[[:space:]]+"/ { sub(/"[^"]*"/, "\"" v "\"") }
+    /<!ENTITY md5[[:space:]]+"/     { sub(/"[^"]*"/, "\"" m "\"") }
+    { print }
+  ' "${PLG_FILE}" > "${PLG_FILE}.new" && mv "${PLG_FILE}.new" "${PLG_FILE}"
   echo "Successfully updated version to '${VERSION}' and md5 to '${MD5}' in ${PLG_FILE}"
 fi
