@@ -7,11 +7,12 @@ Linux Containers (LXC) alongside Docker, with directory, BTRFS and ZFS storage
 backends, scheduled snapshots and backups, an in-browser terminal, and cgroup v2
 resource accounting.
 
-The plugin ships its own LXC runtime packages, built from upstream LXC v7.0.0 with
+The plugin installs its own LXC runtime packages, built from upstream LXC v7.0.0 with
 two backported command-socket hardening patches (GHSA-4xwm-pr6h-55r8) and published
-as version 7.0.1. Two runtimes are provided so older Unraid releases stay supported:
-`LXC-7.0.1-1.txz` (glibc 2.28 baseline, Unraid 6.10-6.12) and `LXC-7.0.1-2.txz`
-(glibc 2.36 baseline, Unraid 7.x).
+as version 7.0.1 from
+https://github.com/moqiaoduo/unraid-lxc-runtime. Two runtimes are provided so older
+Unraid releases stay supported: `LXC-7.0.1-1.txz` (glibc 2.28 baseline, Unraid
+6.10-6.12) and `LXC-7.0.1-2.txz` (glibc 2.36 baseline, Unraid 7.x).
 
 Support and bug reports: https://github.com/moqiaoduo/unraid-lxc-plugin/issues
 

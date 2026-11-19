@@ -100,7 +100,7 @@ lxc-dirtozfs <container_name>
 To build the plugin package `.txz` locally from the repository source:
 ```bash
 # Package the current state into dist/
-./source/makepkg-unraid.sh 2026.09.17
+./source/makepkg-unraid.sh 2026.11.20.0100
 ```
 This script will:
 1. Stage all files with root permissions.
@@ -108,11 +108,55 @@ This script will:
 3. Compute the MD5 checksum into `dist/lxc-${VERSION}.txz.md5`.
 4. Automatically update the version and MD5 entities in `lxc.plg`.
 
+### LXC runtime packages
+
+The LXC runtime is not built here. It is compiled, verified and published from
+[moqiaoduo/unraid-lxc-runtime](https://github.com/moqiaoduo/unraid-lxc-runtime),
+and `lxc.plg` downloads the version named in its `lxcver` entity from that
+repository. The two release lines are independent on purpose: publishing a
+plugin never rebuilds the runtime, and a runtime bump is a one-line change to
+`lxc.plg` that shows up in review, instead of a release moving underneath every
+installed machine.
+
+Every runtime version is published as two packages, because Unraid 6.x and 7.x
+have different glibc baselines:
+
+| Package | Build environment | glibc baseline | Target Unraid |
+|---|---|---|---|
+| `LXC-<ver>-1.txz` | Debian 10 (buster) | `<= 2.28` | 6.10 - 6.12 |
+| `LXC-<ver>-2.txz` | Debian 12 (bookworm) | `<= 2.36` | 7.x |
+
+`lxc.plg` picks the suffix at install time from `/etc/unraid-version`, so both
+must be published under the same runtime tag.
+
+To move to a new runtime version: publish it in the runtime repository, then
+change `<!ENTITY lxcver "...">` in `lxc.plg` and release a plugin. `lxc-start
+--version` must report exactly the entity's value, otherwise the plugin
+reinstalls the runtime on every boot.
+
+### Upstream version and backports
+
+The `7.0.1` runtime is **not** an upstream release. Upstream `lxc/lxc` has
+published no tag past `v7.0.0`, while GHSA-4xwm-pr6h-55r8 lists `>= v7.0.1` as
+the patched version. The runtime repository therefore builds `v7.0.0` with two
+commits cherry-picked from upstream `main`, and sets the project version to
+`7.0.1` so `lxc-start --version` matches the tag `lxc.plg` names:
+
+- `06f62609` — commands: validate string in `lxc_cmd_get_config_item_callback`
+- `19ad80ed` — commands: validate datalen in `lxc_cmd_console_log_callback`
+
 ### Automated Releases
-Releases are automatically built and published by GitHub Actions on any tag push (`git push origin v2026.09.17`).
+
+Both repositories release from GitHub Actions, on independent schedules:
+
+- **Runtime** (`unraid-lxc-runtime`): the tag is the LXC version, e.g.
+  `git tag 7.0.1 && git push origin 7.0.1`.
+- **Plugin** (this repository): run the `Release Plugin` workflow manually. It
+  takes no inputs — the plugin version is the build date and time, and the
+  runtime version is read out of `lxc.plg`. Pushing a tag releases nothing here.
 
 ---
 
 ## License
 
-GPL-3.0 License. See [LICENSE](LICENSE) for details.
+LGPL-2.1 License. See [LICENSE](LICENSE) for details.
