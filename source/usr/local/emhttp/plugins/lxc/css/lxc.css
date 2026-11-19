@@ -120,31 +120,59 @@ h3.startArray, h2.noContainers {
 }
 
 /* Dropdown styling */
-.show_lxc {
-    display: block !important;
-    top: unset !important;
-}
-
-.dropdown-menu.dropdown-context {
-    z-index: 1001;
+/*
+ * The container list lives inside #displaybox > .content, which sets
+ * overflow-x: auto. An absolutely positioned menu gets clipped by that
+ * scroll container, so the menu is fixed to the viewport instead and
+ * showDropdown() positions it at the pointer on every open, scroll and
+ * resize.
+ *
+ * Every property the WebGUI's ".dropdown-menu" rules set is pinned with
+ * !important, because those rules load after this file: a plain declaration
+ * here loses even with the higher specificity of "ul.lxc-dropdown". Any one of
+ * them left in place detaches the menu from the coordinates showDropdown()
+ * writes: "position: absolute" makes the offsets relative to the positioned
+ * .outer row instead of the viewport, and "display: none" leaves the menu
+ * without a box to measure and place.
+ *
+ * The offsets are the exception. showDropdown() writes left/top inline on
+ * every open, scroll and resize; a "!important" declaration here would beat
+ * even that inline style and pin every menu to the viewport corner, so the
+ * stylesheet leaves left and top alone and only neutralises the rest of the
+ * inset: "right", "bottom" and "inset-*" (which include left/top) would
+ * otherwise pin the menu to an edge.
+ */
+ul.lxc-dropdown {
+    position: fixed !important;
+    display: none;
+    right: auto !important;
+    bottom: auto !important;
+    margin: 0 !important;
+    transform: none !important;
+    z-index: 10001;
     min-width: 160px;
+    max-height: calc(100vh - 1rem);
+    overflow-y: auto;
 }
 
-#lxc .outer {
+/* Visibility only. The coordinates come from showDropdown() as inline
+ * left/top, so they must not be pinned anywhere in this stylesheet.
+ * !important is required: "ul.lxc-dropdown" and the WebGUI's
+ * "ul.dropdown-menu" have the same specificity, and the WebGUI load order
+ * flips whichever one this file wins. */
+ul.lxc-dropdown.show_lxc {
+    display: block !important;
+}
+
+/*
+ * Only a positioning context, kept as a safety net: the menu is position:
+ * fixed, so it does not need one. No display change here, because .outer is
+ * also used by the "broken container" rows and by the dashboard tiles, where
+ * the WebGUI default of inline must stay.
+ */
+.lxc-dropdown-wrapper,
+.outer {
     position: relative;
-    display: inline-block;
-}
-
-#lxc .lxc-dropdown-wrapper {
-    position: relative;
-    display: inline-block;
-}
-
-#lxc .dropdown-menu {
-    position: absolute;
-    top: 36px;
-    left: 0;
-    z-index: 1001;
 }
 
 .spinner {

@@ -261,24 +261,160 @@ function showStatus(action, id, title, text) {
 }
 
 
-function showDropdown(contName) {
+// The menu is position: fixed so the scroll container around the container
+// table cannot clip it (see the .lxc-dropdown rules in css/lxc.css). That means
+// it has to be placed by hand: at the pointer, then slid back inside the
+// viewport when the bottom or the right edge is short.
+//
+// The menu opens where the click landed, not at the icon's box: the icon is a
+// 30px square and aligning to its corner leaves the menu visibly offset from
+// the cursor. What is cached is the offset from the clicked trigger's
+// top-left corner to the click point, so a scroll or resize can re-measure the
+// trigger and put the menu back at the same place relative to its row.
+var lxcOpenMenu = null;
+var lxcOpenTrigger = null;
+var lxcOpenOffset = null;
+
+// Rect of the element the click landed on: the icon on the container list, the
+// whole button span on the dashboard. Not its .outer row: that block spans the
+// name and the status columns, so when the pointer is on the left edge of a
+// wide table cell the offset from the row's corner ends up hundreds of pixels
+// wide and the menu lands far from the cursor.
+function lxcAnchorRect(trigger) {
+  if (!trigger || !trigger.getBoundingClientRect) return null;
+  var r = trigger.getBoundingClientRect();
+  return { left: r.left, bottom: r.bottom, top: r.top, width: r.width };
+}
+
+function lxcPositionMenu(menu, point) {
+  if (!menu || !point) return;
+  var margin = 8;
+  var vw = window.innerWidth;
+  var vh = window.innerHeight;
+
+  // Measure with the menu already displayed, but before it can be seen.
+  menu.style.visibility = "hidden";
+  menu.style.left = "0px";
+  menu.style.top = "-9999px";
+  var mw = menu.offsetWidth;
+  var mh = menu.offsetHeight;
+  if (!mw) mw = menu.getBoundingClientRect().width;
+  if (!mh) mh = menu.getBoundingClientRect().height;
+  menu.style.visibility = "";
+
+  // The menu grows down and to the right from the pointer. When that would
+  // cross the right or bottom edge it moves left or up instead, so it never
+  // needs the scroll container to clip it.
+  var left = point.x;
+  if (left + mw > vw - margin) left = vw - mw - margin;
+  if (left < margin) left = margin;
+
+  var top = point.y;
+  if (top + mh > vh - margin) top = point.y - mh;
+  if (top < margin) top = margin;
+
+  menu.style.left = left + "px";
+  menu.style.top = top + "px";
+}
+
+function lxcCloseMenus() {
+  var menus = document.getElementsByClassName("lxc-dropdown");
+  for (var i = 0; i < menus.length; i++) {
+    menus[i].classList.remove("show_lxc");
+  }
+  lxcOpenMenu = null;
+  lxcOpenTrigger = null;
+  lxcOpenOffset = null;
+}
+
+function showDropdown(contName, ev) {
+  var menu = document.getElementById("dropdown_" + contName);
+  if (!menu) return;
+
+  // The document-level click handler below closes every menu while this click
+  // bubbles up, so the current state has to be read now, not inside the
+  // timeout. Clicking the icon that owns an open menu therefore closes it.
+  var wasOpen = menu.classList.contains("show_lxc");
+
+  // Resolve what the click landed on and where inside it the pointer was.
+  // Both have to be read now: the timeout below runs after the browser has
+  // finished the event, and the event object is gone by then.
+  // The clicked element is the icon (container list) or the button span that
+  // holds it (dashboard), so it works for both pages. A scripted call without
+  // an event falls back to the menu's own wrapper.
+  var trigger = (ev && ev.target && ev.target.closest)
+    ? ev.target.closest(".dropdown_btn") || ev.target
+    : null;
+  if (!trigger || !trigger.classList || !trigger.classList.contains("dropdown_btn")) {
+    var button = document.querySelector(".dropdown_btn[onclick*=\"showDropdown('" + contName + "')\"]");
+    trigger = button || (menu.closest ? menu.closest(".lxc-dropdown-wrapper") : null);
+  }
+
+  // Where the menu opens. With a pointer it opens at the pointer, so it
+  // follows the cursor no matter which part of the row was clicked. Without
+  // one (keyboard activation, scripted calls) the icon's bottom-right corner
+  // is the fallback. Only the point is cached: it is re-anchored to the
+  // trigger on scroll and resize.
+  var anchor = lxcAnchorRect(trigger);
+  var offset = null;
+  if (ev && typeof ev.clientX === "number" && typeof ev.clientY === "number") {
+    offset = anchor
+      ? { dx: ev.clientX - anchor.left, dy: ev.clientY - anchor.top }
+      : null;
+  } else if (anchor) {
+    offset = { dx: anchor.width, dy: anchor.bottom - anchor.top };
+  }
+
   setTimeout(function() {
     var menu = document.getElementById("dropdown_" + contName);
     if (!menu) return;
-    menu.classList.toggle("show_lxc");
-    if (menu.classList.contains("show_lxc")) {
-      var rect = menu.getBoundingClientRect();
-      if (rect.right > window.innerWidth) {
-        menu.style.left = "auto";
-        menu.style.right = "0";
-      }
-      if (rect.left < 0) {
-        menu.style.left = "0";
-        menu.style.right = "auto";
-      }
-    }
+
+    lxcCloseMenus();
+    if (wasOpen) return;
+
+    // Re-measure: the page may have scrolled during the timeout.
+    var rect = lxcAnchorRect(trigger);
+    if (!rect) rect = { left: 8, top: 8, bottom: 8, width: 0 };
+    if (!offset) offset = { dx: 0, dy: rect.bottom - rect.top };
+    var point = { x: rect.left + offset.dx, y: rect.top + offset.dy };
+
+    menu.classList.add("show_lxc");
+    lxcPositionMenu(menu, point);
+    lxcOpenMenu = menu;
+    lxcOpenTrigger = trigger;
+    lxcOpenOffset = offset;
   }, 100);
 }
+
+// Keep an open menu attached to where it was opened from while the page
+// scrolls or resizes. The trigger and the click offset are cached rather than
+// the coordinates: the row moves with the page, so re-measuring is the only
+// way the menu can follow it. Once the trigger has been scrolled out of view
+// the menu is dismissed instead of floating around detached from its row.
+function lxcReposition() {
+  if (!lxcOpenMenu || !lxcOpenMenu.classList.contains("show_lxc")) return;
+  var rect = lxcAnchorRect(lxcOpenTrigger);
+  if (!rect) {
+    lxcCloseMenus();
+    return;
+  }
+  if (rect.bottom < 0 || rect.top > window.innerHeight) {
+    lxcCloseMenus();
+    return;
+  }
+  // Only re-anchor when the cached offset still points inside the trigger;
+  // otherwise (missing offset, or a retargeted trigger smaller than the
+  // cached one) fall back to its bottom-left corner.
+  var offset = lxcOpenOffset;
+  if (!offset || offset.dx < 0 || offset.dx > rect.width ||
+      offset.dy < 0 || offset.dy > rect.bottom - rect.top) {
+    offset = { dx: 0, dy: rect.bottom - rect.top };
+  }
+  lxcPositionMenu(lxcOpenMenu, { x: rect.left + offset.dx, y: rect.top + offset.dy });
+}
+
+window.addEventListener("scroll", lxcReposition, true);
+window.addEventListener("resize", lxcReposition);
 
 // Function that creates a new container
 function createContainer(name, description, distribution, release, startcont, autostart, mac) {
@@ -733,13 +869,7 @@ $(function() {
         });
       });
     } else if ($(e.target).closest(".btn_dropdown, .dropdown_btn").length > 0) {
-      var dropdowns = document.getElementsByClassName("dropdown-menu");
-      for (var i = 0; i < dropdowns.length; i++) {
-        var openDropdown = dropdowns[i];
-        if (openDropdown.classList.contains('show_lxc')) {
-          openDropdown.classList.remove('show_lxc');
-        }
-      }
+      lxcCloseMenus();
     }
   });
 
@@ -756,8 +886,8 @@ $(function() {
   });
 
   $(document).mouseup(function (e) {
-    if ($(e.target).closest(".btn_dropdown, .dropdown_btn, .dropdown-menu").length === 0) {
-      $('.dropdown-menu').removeClass('show_lxc');
+    if ($(e.target).closest(".btn_dropdown, .dropdown_btn, .dropdown-menu, .lxc-dropdown").length === 0) {
+      lxcCloseMenus();
     }
   });
 
