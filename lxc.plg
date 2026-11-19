@@ -2,7 +2,8 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "lxc">
   <!ENTITY author    "moqiaoduo">
-  <!ENTITY version   "2026.11.19.0537">
+  <!ENTITY version   "2026.11.20.0100">
+  <!ENTITY lxcver    "7.0.1">
   <!ENTITY launch    "Settings/LXCSettings">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;-plugin/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
@@ -640,28 +641,12 @@ fi
 #Set variables and get version numbers
 LXC_DATADIRECTORY="$(cat &plugin;/lxc.conf | grep -n "lxc.lxcpath" | cut -d '=' -f2 | sed 's/\"//g')"
 LXC_SERVICE="$(cat &plugin;/plugin.cfg | grep -nw "SERVICE" | cut -d '=' -f2 | sed 's/\"//g')"
-LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
 CUR_V="$(ls &plugin;/packages/LXC-*-${BUILD_IDX}.txz 2>/dev/null | sort -V | tail -1 | cut -d '-' -f2)"
-DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/${LAT_V}"
-
-# The release tag is the LXC version, so releases/latest is the source of truth
-# for what to install. If GitHub cannot be reached, fall back to the newest
-# package already on the flash drive rather than assuming a version: guessing
-# would point the download at an asset that may not exist.
-if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
-  if [ -n "${CUR_V}" ]; then
-    # The package for CUR_V is already on the flash drive, so check() will
-    # install it without touching the network.
-    echo
-    echo "---Cannot reach GitHub, using the local package ${CUR_V}---"
-    LAT_V="${CUR_V}"
-    DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/${LAT_V}"
-  else
-    echo
-    echo "---Cannot determine the latest LXC version and no local package found---"
-    exit 1
-  fi
-fi
+# The runtime version is pinned here instead of read from releases/latest.
+# The plugin and the runtime ship on their own release schedules from
+# separate repositories, so latest only ever means "the newest plugin".
+LAT_V="&lxcver;"
+DL_URL="https://github.com/moqiaoduo/unraid-lxc-runtime/releases/download/${LAT_V}"
 
 #Check for old packages
 rm -f $(ls &plugin;/packages/LXC-*.txz 2>/dev/null | grep -v "$LAT_V")
