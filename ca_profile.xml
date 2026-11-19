@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <!-- Required: a non-empty Profile. Markdown is supported. -->
+  <Profile>
+This repository maintains the **LXC** plugin for Unraid: a native WebGUI for running
+Linux Containers (LXC) alongside Docker, with directory, BTRFS and ZFS storage
+backends, scheduled snapshots and backups, an in-browser terminal, and cgroup v2
+resource accounting.
+
+The plugin ships its own LXC runtime packages, built from upstream LXC v7.0.0 with
+two backported command-socket hardening patches (GHSA-4xwm-pr6h-55r8) and published
+as version 7.0.1. Two runtimes are provided so older Unraid releases stay supported:
+`LXC-7.0.1-1.txz` (glibc 2.28 baseline, Unraid 6.10-6.12) and `LXC-7.0.1-2.txz`
+(glibc 2.36 baseline, Unraid 7.x).
+
+Support and bug reports: https://github.com/moqiaoduo/unraid-lxc-plugin/issues
+
+This is an independent community fork. It is not affiliated with, endorsed by, or
+supported by Unraid, Lime Technology, or the maintainers of the upstream LXC project.
+  </Profile>
+
+  <!-- Optional: repository / maintainer icon -->
+  <Icon>https://raw.githubusercontent.com/moqiaoduo/unraid-lxc-plugin/master/source/usr/local/emhttp/plugins/lxc/images/lxc.png</Icon>
+
+  <!-- Optional: canonical home page for this repository -->
+  <WebPage>https://github.com/moqiaoduo/unraid-lxc-plugin</WebPage>
+
+  <!-- Optional support link. Not set yet: this fork has no Unraid forum thread.
+       <Forum>https://forums.unraid.net/topic/YOUR_SUPPORT_TOPIC</Forum> -->
+</CommunityApplications>

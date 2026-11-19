@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Community Applications wrapper for the LXC plugin.
+  Keep one XML wrapper per plugin under plugins/. The PluginURL below must match
+  the pluginURL attribute inside lxc.plg exactly, otherwise CA cannot link the
+  catalog entry to the manifest.
+-->
+<Plugin>
+  <!-- Minimum: display name in Community Apps. Distinct from ich777's
+       "LXC for Unraid" entry so the two do not collide in the catalog. -->
+  <Name>LXC Community</Name>
+
+  <!-- Minimum: the plugin manifest. Matches lxc.plg pluginURL after entity
+       expansion: &gitURL;/&name;.plg = .../raw/master/lxc.plg -->
+  <PluginURL>https://github.com/moqiaoduo/unraid-lxc-plugin/raw/master/lxc.plg</PluginURL>
+
+  <PluginAuthor>moqiaoduo</PluginAuthor>
+
+  <Overview>A native WebGUI for running Linux Containers (LXC) on Unraid, alongside Docker. Directory, BTRFS and ZFS storage backends, scheduled snapshots and backups, an in-browser terminal, per-container resource accounting, and a bundled LXC runtime with two compile targets so Unraid 6.10 and 7.x are both supported.</Overview>
+
+  <Support>https://github.com/moqiaoduo/unraid-lxc-plugin/issues</Support>
+  <Project>https://github.com/moqiaoduo/unraid-lxc-plugin</Project>
+  <ReadMe>https://raw.githubusercontent.com/moqiaoduo/unraid-lxc-plugin/master/README.md</ReadMe>
+
+  <Category>Tools:System</Category>
+
+  <Icon>https://raw.githubusercontent.com/moqiaoduo/unraid-lxc-plugin/master/source/usr/local/emhttp/plugins/lxc/images/lxc.png</Icon>
+
+  <License>LGPL-2.1 (https://github.com/moqiaoduo/unraid-lxc-plugin/blob/master/LICENSE)</License>
+
+  <!-- Not a beta plugin: the runtime and WebGUI are both built and released
+       by CI on every tag. -->
+  <Beta>false</Beta>
+
+  <!-- The .plg carries min="6.10.0"; CA ignores MinVer when the manifest has
+       its own min attribute, but keep it consistent for reviewers. -->
+  <MinVer>6.10.0</MinVer>
+</Plugin>
