@@ -4,9 +4,12 @@ CUR_V="$(lxc-info --version 2>/dev/null)"
 LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
 DL_BASE="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download"
 
+# No fallback to another repository: a release published elsewhere carries a
+# binary this plugin did not build and cannot vouch for. If GitHub is
+# unreachable the caller gets an empty LAT_V and reports it.
 if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
-  LAT_V="$(wget -qO- https://api.github.com/repos/ich777/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
-  DL_BASE="https://github.com/ich777/unraid-lxc-plugin/releases/download"
+  echo "---Cannot determine the latest LXC version from GitHub---"
+  exit 1
 fi
 
 upgrade() {

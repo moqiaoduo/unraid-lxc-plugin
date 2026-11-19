@@ -2,11 +2,11 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "lxc">
   <!ENTITY author    "moqiaoduo">
-  <!ENTITY version   "2026.09.17">
+  <!ENTITY version   "2026.11.19.0537">
   <!ENTITY launch    "Settings/LXCSettings">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;-plugin/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "5d59dd0fd7ec76900b2ffa0d7749b2ed">
+  <!ENTITY md5       "010791d417cea5429f3df5f6406a9590">
   <!ENTITY plugin    "/boot/config/plugins/&name;">
   <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
 ]>
@@ -540,7 +540,7 @@ rm -f $(ls &plugin;/&name;*.txz 2>/dev/null|grep -v '&version;')
 </FILE>
 
 <FILE Name="&plugin;/&name;-&version;.txz" Run="upgradepkg --install-new">
-<URL>https://github.com/&author;/unraid-&name;-plugin/releases/download/&version;/&name;-&version;.txz</URL>
+<URL>https://github.com/&author;/unraid-&name;-plugin/releases/latest/download/&name;-&version;.txz</URL>
 <URL>&gitURL;/packages/&name;-&version;.txz</URL>
 <MD5>&md5;</MD5>
 </FILE>
@@ -642,25 +642,24 @@ LXC_DATADIRECTORY="$(cat &plugin;/lxc.conf | grep -n "lxc.lxcpath" | cut -d '=' 
 LXC_SERVICE="$(cat &plugin;/plugin.cfg | grep -nw "SERVICE" | cut -d '=' -f2 | sed 's/\"//g')"
 LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
 CUR_V="$(ls &plugin;/packages/LXC-*-${BUILD_IDX}.txz 2>/dev/null | sort -V | tail -1 | cut -d '-' -f2)"
+DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/${LAT_V}"
 
+# The release tag is the LXC version, so releases/latest is the source of truth
+# for what to install. If GitHub cannot be reached, fall back to the newest
+# package already on the flash drive rather than assuming a version: guessing
+# would point the download at an asset that may not exist.
 if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
-  # Fallback to upstream release assets if no releases published under fork yet
-  LAT_V="$(wget -qO- https://api.github.com/repos/ich777/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
-  if [ -n "${LAT_V}" ]; then
-    if [ "${LAT_V}" != "null" ]; then
-      DL_URL="https://github.com/ich777/unraid-lxc-plugin/releases/download/$LAT_V"
-    fi
-  fi
-else
-  DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/$LAT_V"
-fi
-
-if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
-  if [ -z "${CUR_V}" ]; then
-    LAT_V="7.0.0"
-    DL_URL="https://github.com/ich777/unraid-lxc-plugin/releases/download/$LAT_V"
+  if [ -n "${CUR_V}" ]; then
+    # The package for CUR_V is already on the flash drive, so check() will
+    # install it without touching the network.
+    echo
+    echo "---Cannot reach GitHub, using the local package ${CUR_V}---"
+    LAT_V="${CUR_V}"
+    DL_URL="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download/${LAT_V}"
   else
-    LAT_V=${CUR_V}
+    echo
+    echo "---Cannot determine the latest LXC version and no local package found---"
+    exit 1
   fi
 fi
 
