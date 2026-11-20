@@ -357,6 +357,33 @@ class Container {
     }
   }
 
+  function restoreSnapshot($snapshot) {
+    $wasRunning = ($this->state == "RUNNING");
+    exec('logger "LXC: Restoring container ' . $this->name . ' from snapshot ' . $snapshot . '"');
+    $this->stopContainer();
+    exec('lxc-snapshot -n ' . escapeshellarg($this->name) . ' -r ' . escapeshellarg($snapshot) . ' 2>&1', $output, $retval);
+    if ($retval == 1) {
+      echo '<p class="lxc-error" style="color:red;">';
+      echo lxc_tf('ERROR, failed to restore container %s from snapshot %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8'), htmlspecialchars($snapshot, ENT_QUOTES, 'UTF-8')) . "<br/><br/>";
+      echo lxc_t('The container may have been destroyed and could fail to start. Restore it from a backup if necessary.') . "<br/><br/>";
+      exec('logger "LXC: error: Failed to restore Container ' . $this->name . ' from snapshot ' . $snapshot . '"');
+      foreach ($output as $error) {
+        exec('logger "LXC: ' . $error . '"');
+        echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . "<br/>";
+      }
+      echo '</p>';
+      if ($wasRunning) {
+        $this->startContainer();
+      }
+    } else {
+      echo '<p>' . lxc_tf('Container %s restored from snapshot %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8'), htmlspecialchars($snapshot, ENT_QUOTES, 'UTF-8')) . '</p>';
+      exec('logger "LXC: Container ' . $this->name . ' restored from snapshot ' . $snapshot . '"');
+      if ($wasRunning) {
+        $this->startContainer();
+      }
+    }
+  }
+
   function createBackup() {
     exec('lxc-autobackup ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
     if ($retval == 1) {

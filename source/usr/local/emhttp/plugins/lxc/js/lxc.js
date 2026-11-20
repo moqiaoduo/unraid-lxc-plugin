@@ -213,7 +213,7 @@ document.addEventListener('keydown', function(event) {
 
 
 // Function that shows the status dialog
-function showStatus(action, id, title, text) {
+function showStatus(action, id, title, text, extra) {
   let statusInterval;
 
   Shadowbox.open({
@@ -231,11 +231,11 @@ function showStatus(action, id, title, text) {
     $.ajax({
       type: "POST",
       url: '/plugins/lxc/include/ajax.php',
-      data: {
+      data: $.extend({
         'lxc': '',
         'action': action,
         'container': id
-      },
+      }, extra || {}),
       xhr: function() {
         // get the native XmlHttpRequest object
         const xhr = $.ajaxSettings.xhr();
@@ -665,6 +665,27 @@ $(function() {
         });
       }
     }, "<span style=\"color:red;font-weight:bold;\">" + LXC_T("ATTENTION") + "</span><br/>" + LXC_T("Do you really want to destroy this Snapshot? This is IRREVERSIBLE and will delete the snapshot and all data in it!"));
+  });
+
+  // Listener for restoring a container in place from one of its snapshots
+  $(".restoreSNAP").on("click", function() {
+    let id = this.id.split(" ")[0];
+    let snapshot = this.id.split(" ")[1];
+
+    showPrompt(function (typed) {
+      if (typeof typed !== "string" || typed === "") {
+        return;
+      }
+      if (typed !== id) {
+        showDialog(function () {}, LXC_T("The container name does not match. Nothing was restored."), LXC_T("Restore Container"));
+        return;
+      }
+      showStatus("restoreSNAP", id, LXC_T("Restoring Container from snapshot"), "", { snapshot: snapshot });
+    }, LXC_T("ATTENTION") + ": " + LXC_T("Restore Container"),
+      LXC_TF("Do you really want to restore the LXC Container %s from snapshot %s?", id, snapshot) + "\n" +
+      LXC_T("The current container will be destroyed and replaced by the snapshot. All changes made after this snapshot will be lost!") + "\n\n" +
+      LXC_TF("Type the container name %s to confirm:", id),
+      id);
   });
 
   // Listener for deleting backups
