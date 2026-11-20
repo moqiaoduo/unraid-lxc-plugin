@@ -3,11 +3,17 @@
 PLG="/boot/config/plugins/lxc/lxc.plg"
 CUR_V="$(lxc-start --version 2>/dev/null)"
 # The runtime version is pinned by the plugin itself (&lxcver; in lxc.plg) and
-# the .plg re-installs that pin on every boot. Resolve the pin here instead of
-# asking the plugin repo for releases/latest: its tags are plugin versions
-# (plugin-YYYY.MM.DD.NNNN), not runtime versions, and the runtime ships from a
-# separate repository.
-LAT_V="$(grep -o 'lxcver[[:space:]]*"[^"]*"' "$PLG" 2>/dev/null | head -1 | cut -d'"' -f2)"
+# the .plg re-installs that pin on every boot. Resolve the pin from the local
+# installation instead of asking the plugin repo for releases/latest: its tags
+# are plugin versions (plugin-YYYY.MM.DD.NNNN), not runtime versions, and the
+# runtime ships from a separate repository.
+PIN_V="$(grep -o 'lxcver[[:space:]]*"[^"]*"' "$PLG" 2>/dev/null | head -1 | cut -d'"' -f2)"
+# A plugin installed without its .plg still leaves the pinned runtime package
+# behind, and its filename carries the version (LXC-<version>-<build>.txz).
+if [ -z "${PIN_V}" ]; then
+  PIN_V="$(ls /boot/config/plugins/lxc/packages/LXC-*-*.txz 2>/dev/null | sed -n 's|.*/LXC-\([0-9][^-]*\)-.*|\1|p' | sort -V | tail -1)"
+fi
+LAT_V="${PIN_V}"
 DL_BASE="https://github.com/moqiaoduo/unraid-lxc-runtime/releases/download"
 
 # No fallback to another repository: a release published elsewhere carries a
