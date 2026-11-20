@@ -278,6 +278,21 @@ var lxcOpenMenu = null;
 var lxcOpenTrigger = null;
 var lxcOpenOffset = null;
 
+// Pending open timer. The open is deferred so the WebGUI's own document-level
+// dropdown handling, which runs while this click bubbles, has finished before
+// the menu is shown; showing it synchronously makes the WebGUI close it again
+// right away, so the menu flashes open and shut. Keeping the handle is what
+// makes the deferral safe: closing the menu cancels the pending open, so a
+// timer started by one click can never reopen a menu that was closed since.
+var lxcOpenTimer = null;
+
+function lxcCancelOpen() {
+  if (lxcOpenTimer !== null) {
+    clearTimeout(lxcOpenTimer);
+    lxcOpenTimer = null;
+  }
+}
+
 // Rect of the element the click landed on: the icon on the container list, the
 // whole button span on the dashboard. Not its .outer row: that block spans the
 // name and the status columns, so when the pointer is on the left edge of a
@@ -321,6 +336,7 @@ function lxcPositionMenu(menu, point) {
 }
 
 function lxcCloseMenus() {
+  lxcCancelOpen();
   var menus = document.getElementsByClassName("lxc-dropdown");
   for (var i = 0; i < menus.length; i++) {
     menus[i].classList.remove("show_lxc");
@@ -334,14 +350,13 @@ function showDropdown(contName, ev) {
   var menu = document.getElementById("dropdown_" + contName);
   if (!menu) return;
 
-  // The document-level click handler below closes every menu while this click
-  // bubbles up, so the current state has to be read now, not inside the
-  // timeout. Clicking the icon that owns an open menu therefore closes it.
+  // Clicking the icon that owns an open menu closes it. Read before the
+  // deferred open below replaces the state.
   var wasOpen = menu.classList.contains("show_lxc");
 
   // Resolve what the click landed on and where inside it the pointer was.
-  // Both have to be read now: the timeout below runs after the browser has
-  // finished the event, and the event object is gone by then.
+  // Both are read now: the deferred open runs after the browser has finished
+  // the event, and the event object is gone by then.
   // The clicked element is the icon (container list) or the button span that
   // holds it (dashboard), so it works for both pages. A scripted call without
   // an event falls back to the menu's own wrapper.
@@ -368,14 +383,21 @@ function showDropdown(contName, ev) {
     offset = { dx: anchor.width, dy: anchor.bottom - anchor.top };
   }
 
-  setTimeout(function() {
+  lxcCloseMenus();
+  if (wasOpen) return;
+
+  // The open is deferred by one tick of 100ms so the WebGUI's document-level
+  // dropdown handling, which runs while this click bubbles, has finished. The
+  // handle is kept in lxcOpenTimer so lxcCloseMenus() can cancel a pending
+  // open: otherwise the timer outlives the menu it was meant to open and puts
+  // it back on screen after the user has already dismissed it.
+  lxcOpenTimer = setTimeout(function() {
+    lxcOpenTimer = null;
+
     var menu = document.getElementById("dropdown_" + contName);
     if (!menu) return;
 
-    lxcCloseMenus();
-    if (wasOpen) return;
-
-    // Re-measure: the page may have scrolled during the timeout.
+    // Re-measure: the page may have scrolled during the delay.
     var rect = lxcAnchorRect(trigger);
     if (!rect) rect = { left: 8, top: 8, bottom: 8, width: 0 };
     if (!offset) offset = { dx: 0, dy: rect.bottom - rect.top };
@@ -871,10 +893,19 @@ $(function() {
           }
         });
       });
-    } else if ($(e.target).closest(".btn_dropdown, .dropdown_btn").length > 0) {
-      lxcCloseMenus();
     }
   });
+
+  // Choosing an item closes the menu. This runs in the capture phase on
+  // purpose: the item handlers below call stopImmediatePropagation(), so a
+  // bubble-phase listener would never see the click and the menu would stay
+  // on screen after the action fired. Clicks on the icon are left to
+  // showDropdown(), which toggles the menu itself.
+  document.addEventListener('click', function(e) {
+    if (e.target && e.target.closest && e.target.closest(".lxc-dropdown")) {
+      lxcCloseMenus();
+    }
+  }, true);
 
   let checkboxes = $("input[type=checkbox].lxc")
   checkboxes.change(function(e) {
