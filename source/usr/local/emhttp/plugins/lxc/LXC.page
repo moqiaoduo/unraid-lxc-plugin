@@ -9,6 +9,7 @@ Cond="exec(\"grep -o '^SERVICE=enabled' /boot/config/plugins/lxc/plugin.cfg 2>/d
 <?php
 $started = $var['fsState']=='Started';
 
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Container.php';
 $settings = new Settings();
 $allContainers = getAllContainers();
@@ -37,6 +38,7 @@ file_put_contents('/tmp/lxc/containers/active', time());
 <link rel="stylesheet" href="<?autov('/plugins/lxc/css/lxc.css')?>">
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<?= lxc_i18n_js() ?>
 <script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
 
 <style>
@@ -49,15 +51,15 @@ label+.content {
 <? if (count($allContainers) == 0) {
   $container_check = array_filter($container_check);
   if (count($container_check) !== 0) {	
-  echo '<h2>Containers with configuration errors:</h2>';
+  echo '<h2>' . lxc_t('Containers with configuration errors:') . '</h2>';
   echo '<table id="lxc_table" class="tablesorter shift" style="margin-top: 0px !important;">';
   echo '<thead>';
   echo '<tr>';
   echo '<th>';
-  echo '<a href="#" id="sorting"><i class="fa fa-th-list"></i></a>Name';
+  echo '<a href="#" id="sorting"><i class="fa fa-th-list"></i></a>' . lxc_t('Name');
   echo '</th>';
   echo '<th>';
-  echo 'Configuration Path';
+  echo lxc_t('Configuration Path');
   echo '</th>';
   echo '</tr>';
   echo '</thead>';
@@ -74,7 +76,7 @@ label+.content {
     echo ltrim($faulty, './');
     echo '</font>';
     echo '<br>';
-    echo '<span style="font-size:9pt"><i class="fa fa-ban red-text"></i> faulty config</span>';
+    echo '<span style="font-size:9pt"><i class="fa fa-ban red-text"></i> ' . lxc_t('faulty config') . '</span>';
     echo '</span>';
     echo '</td>';
     echo '<td><a href="#" class="' . ltrim($faulty, './') . '" id="editconfig"><i class="fa fa-edit text"></i> ' . $settings->default_path . '/' . ltrim($faulty, './') . '/config</a></td>';
@@ -83,10 +85,10 @@ label+.content {
   echo '</tbody>';
   echo '</table>';
   } else { ?>
-  <h2 style="text-align: center;">No LXC containers installed, please go to the plugin page to configure the plugin first!</h2>
+  <h2 style="text-align: center;"><?= lxc_t('No LXC containers installed, please go to the plugin page to configure the plugin first!') ?></h2>
   <?php } ?>
   <a href="/LXCAddContainer">
-    <input type="button" value="Add Container">
+    <input type="button" value="<?= lxc_t('Add Container') ?>">
   </a>
 <? } else { ?>
 
@@ -96,40 +98,40 @@ label+.content {
   <th style='width: 700px; min-width: 320px;'>
     <a href="#" id="sorting">
       <i class="fa fa-th-list"></i>
-    </a>Name/Status
+    </a><?= lxc_t('Name/Status') ?>
   </th>
   <th style='width: 40px; min-width: 40px;'>
-    CPUs
+    <?= lxc_t('CPUs') ?>
   </th>
   <?php if($settings->dynamic_stats === "enabled") { ?>
   <th style='width: 40px; min-width: 40px;'>
-    CPU Load
+    <?= lxc_t('CPU Load') ?>
   </th>
   <th style='width: 150px; min-width: 150px;'>
-    Memory Usage
+    <?= lxc_t('Memory Usage') ?>
   </th>
   <th style='min-width: 140px;'>
-    Address
+    <?= lxc_t('Address') ?>
   </th>
   <th style='width: 100px;'>
-    Total RX/TX
+    <?= lxc_t('Total RX/TX') ?>
   </th>
   <?php } else { ?>
   <th style='min-width: 140px;'>
-    Address
+    <?= lxc_t('Address') ?>
   </th>
   <th style='width: 100px;'>
-    Total RX/TX
+    <?= lxc_t('Total RX/TX') ?>
   </th>
   <?php } ?>
   <th style='width: 70px;'>
-    PID
+    <?= lxc_t('PID') ?>
   </th>
   <th style='width: 90px;'>
-    Autostart
+    <?= lxc_t('Autostart') ?>
   </th>
   <th style='width: 100px;'>
-    Uptime
+    <?= lxc_t('Uptime') ?>
   </th>
 </tr>
 </thead>
@@ -178,7 +180,7 @@ foreach ($allContainers as $container) {
              ?>
           </font>
           <br>
-          <span style="font-size:9pt"><i class='<?php if($container->state == "RUNNING") { echo "fa fa-play started green-text"; } elseif($container->state == "FROZEN") { echo "fa fa-pause paused orange-text"; } else { echo "fa fa-square stopped red-text"; } ?>'></i> <?php if($container->state == "RUNNING") { echo "started"; } elseif($container->state == "FROZEN") { echo "paused"; } else { echo "stopped"; } ?></span>
+          <span style="font-size:9pt"><i class='<?php if($container->state == "RUNNING") { echo "fa fa-play started green-text"; } elseif($container->state == "FROZEN") { echo "fa fa-pause paused orange-text"; } else { echo "fa fa-square stopped red-text"; } ?>'></i> <?php if($container->state == "RUNNING") { echo lxc_t('started'); } elseif($container->state == "FROZEN") { echo lxc_t('paused'); } else { echo lxc_t('stopped'); } ?></span>
           <ul id="dropdown_<?= $container->name;?>" class="dropdown-menu dropdown-context fa-ul lxc-dropdown">
             <?php if ($container->state == "RUNNING") { ?>
               <?php if ($container->lxcwebui !== null) {
@@ -193,52 +195,52 @@ foreach ($allContainers as $container) {
                     $ips = nl2br(trim($ipInfov4 . $ipInfoDocker . $ipInfov6));
                     $IPfromCont = str_replace("[IP]", strtok($ips, "<br/>"), $container->lxcwebui);
                     if (!empty($ips)) {
-                      echo "<li><a class='localURL' target='_blank' href='" . $IPfromCont . "'><i class='fa fa-fw fa-globe fa-lg'></i> WebUI</a></li>";
+                      echo "<li><a class='localURL' target='_blank' href='" . $IPfromCont . "'><i class='fa fa-fw fa-globe fa-lg'></i> " . lxc_t('WebUI') . "</a></li>";
                     }
                   } else {
-                    echo "<li><a class='localURL' target='_blank' href='" . $container->lxcwebui . "'><i class='fa fa-fw fa-globe fa-lg'></i> WebUI</a></li>";
+                    echo "<li><a class='localURL' target='_blank' href='" . $container->lxcwebui . "'><i class='fa fa-fw fa-globe fa-lg'></i> " . lxc_t('WebUI') . "</a></li>";
                   }
                 } ?> 
-              <li><a href="#" title="Terminal" onclick="startConsole('<?= $container->name ?>')"><i class="fa fa-fw fa-terminal fa-lg"></i>  Terminal</a></li>
+              <li><a href="#" title="<?= lxc_t('Terminal') ?>" onclick="startConsole('<?= $container->name ?>')"><i class="fa fa-fw fa-terminal fa-lg"></i>  <?= lxc_t('Terminal') ?></a></li>
               <div class="divider"></div>
-              <li><a href="#" class="stopCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-stop fa-lg"></i>  Stop</a></li>
-              <li><a href="#" class="restartCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-refresh fa-lg"></i>  Restart</a></li>
-              <li><a href="#" class="freezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  Freeze</a></li>
-              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  Kill</a></li>
+              <li><a href="#" class="stopCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-stop fa-lg"></i>  <?= lxc_t('Stop') ?></a></li>
+              <li><a href="#" class="restartCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-refresh fa-lg"></i>  <?= lxc_t('Restart') ?></a></li>
+              <li><a href="#" class="freezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Freeze') ?></a></li>
+              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  <?= lxc_t('Kill') ?></a></li>
             <?php } else if ($container->state =="STOPPED") {?>
-              <li><a href="#" class="startCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-play fa-lg"></i>  Start</a></li>
+              <li><a href="#" class="startCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-play fa-lg"></i>  <?= lxc_t('Start') ?></a></li>
             <?php } else if ($container->state == "FROZEN") {?>
-              <li><a href="#" class="unfreezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  Unfreeze</a></li>
-              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  Kill</a></li>
+              <li><a href="#" class="unfreezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Unfreeze') ?></a></li>
+              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  <?= lxc_t('Kill') ?></a></li>
             <?php } ?>
             <div class="divider"></div>
-            <li><a href="#" class="<?= $container->name ?>" id="editconfig"><i class="fa fa-fw fa-file-text-o fa-lg"></i>  Show/Edit Config</a></li>
-            <li><a href="#" class="snapshotCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-camera fa-lg"></i>  Create Snapshot</a></li>
+            <li><a href="#" class="<?= $container->name ?>" id="editconfig"><i class="fa fa-fw fa-file-text-o fa-lg"></i>  <?= lxc_t('Show/Edit Config') ?></a></li>
+            <li><a href="#" class="snapshotCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-camera fa-lg"></i>  <?= lxc_t('Create Snapshot') ?></a></li>
             <?php if($settings->backup_enabled == "enabled") {
-              echo '<li><a href="#" class="backupCONT" id="' . $container->name . '"><i class="fa fa-fw fa-archive fa-lg"></i>  Create Backup</a></li>';
+              echo '<li><a href="#" class="backupCONT" id="' . $container->name . '"><i class="fa fa-fw fa-archive fa-lg"></i>  ' . lxc_t('Create Backup') . '</a></li>';
               } ?>
-            <li><a href="/LXCCopyContainer?cont=<?= $container->name ?>" id="<?= $container->name ?>"><i class="fa fa-fw fa-clone fa-lg"></i>  Copy Container</a></li>
+            <li><a href="/LXCCopyContainer?cont=<?= $container->name ?>" id="<?= $container->name ?>"><i class="fa fa-fw fa-clone fa-lg"></i>  <?= lxc_t('Copy Container') ?></a></li>
             <?
             if ($container->description == "") {
-            echo "<li><a href=\"#\" class=\"descCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-comment fa-lg\"></i>  Set Description</a></li>";
+            echo "<li><a href=\"#\" class=\"descCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-comment fa-lg\"></i>  " . lxc_t('Set Description') . "</a></li>";
             } else {
-            echo "<li><a href=\"#\" class=\"descCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-comment fa-lg\"></i>  Change Description</a></li>";
+            echo "<li><a href=\"#\" class=\"descCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-comment fa-lg\"></i>  " . lxc_t('Change Description') . "</a></li>";
             }
             if ($container->lxcwebui == "") {
-            echo "<li><a href=\"#\" class=\"webuiCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-link fa-lg\"></i>  Set WebUI URL</a></li>";
+            echo "<li><a href=\"#\" class=\"webuiCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-link fa-lg\"></i>  " . lxc_t('Set WebUI URL') . "</a></li>";
             } else {
-            echo "<li><a href=\"#\" class=\"webuiCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-link fa-lg\"></i>  Change WebUI URL</a></li>";
+            echo "<li><a href=\"#\" class=\"webuiCONT\" id=\"$container->name\"><i class=\"fa fa-fw fa-link fa-lg\"></i>  " . lxc_t('Change WebUI URL') . "</a></li>";
             }
             ?>
             <div class="divider"></div>
-            <li><a href="#" class="destroyCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-trash fa-lg"></i>  Destroy</a></li>
+            <li><a href="#" class="destroyCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-trash fa-lg"></i>  <?= lxc_t('Destroy') ?></a></li>
             <? if ($container->supportlink != "" || $container->donatelink != "") {
             echo '<div class="divider"></div>';
             if ($container->supportlink != "") {
-              echo "<li><a target='_blank' href='" . $container->supportlink . "'><i class='fa fa-fw fa-question fa-lg'></i> Support</a></li>";
+              echo "<li><a target='_blank' href='" . $container->supportlink . "'><i class='fa fa-fw fa-question fa-lg'></i> " . lxc_t('Support') . "</a></li>";
             }
             if ($container->donatelink != "") {
-              echo "<li><a target='_blank' href='" . $container->donatelink . "'><i class='fa fa-fw fa-external-link fa-lg'></i> Donate</a></li>";
+              echo "<li><a target='_blank' href='" . $container->donatelink . "'><i class='fa fa-fw fa-external-link fa-lg'></i> " . lxc_t('Donate') . "</a></li>";
             }
             } ?>
           </ul>
@@ -300,7 +302,7 @@ foreach ($allContainers as $container) {
         $checked = "";
       }
       ?>
-      <input class='lxc autostart' type='checkbox' id="<?= $container->name ?>" title="<?= _('Toggle container autostart') ?>" <?= $checked ?>>
+      <input class='lxc autostart' type='checkbox' id="<?= $container->name ?>" title="<?= lxc_t('Toggle container autostart') ?>" <?= $checked ?>>
     </td>
     <td>
       <?= $container->uptime;?>
@@ -315,15 +317,15 @@ foreach ($allContainers as $container) {
 $differences = array_filter(array_diff($container_check, $containerNames));
 
 if (count($differences) > 0) {
-  echo '<br><h2>Containers with configuration errors:</h2>';
+  echo '<br><h2>' . lxc_t('Containers with configuration errors:') . '</h2>';
   echo '<table id="lxc_table" class="tablesorter shift" style="margin-top: 0px !important;">';
   echo '<thead>';
   echo '<tr>';
   echo '<th>';
-  echo '<a href="#" id="sorting"><i class="fa fa-th-list"></i></a>Name';
+  echo '<a href="#" id="sorting"><i class="fa fa-th-list"></i></a>' . lxc_t('Name');
   echo '</th>';
   echo '<th>';
-  echo 'Configuration Path';
+  echo lxc_t('Configuration Path');
   echo '</th>';
   echo '</tr>';
   echo '</thead>';
@@ -340,7 +342,7 @@ if (count($differences) > 0) {
     echo ltrim($faulty, './');
     echo '</font>';
     echo '<br>';
-    echo '<span style="font-size:9pt"><i class="fa fa-ban red-text"></i> faulty config</span>';
+    echo '<span style="font-size:9pt"><i class="fa fa-ban red-text"></i> ' . lxc_t('faulty config') . '</span>';
     echo '</span>';
     echo '</td>';
     echo '<td><a href="#" class="' . ltrim($faulty, './') . '" id="editconfig"><i class="fa fa-edit text"></i> ' . $settings->default_path . '/' . ltrim($faulty, './') . '/config</a></td>';
@@ -381,24 +383,24 @@ if (count($differences) > 0) {
 <?php } ?>
 
 <a href="/LXCAddContainer">
-  <input type="button" value="Add Container">
+  <input type="button" value="<?= lxc_t('Add Container') ?>">
 </a>
 <a href="#" class="startALLCONT" >
-  <input type="button" value="Start All">
+  <input type="button" value="<?= lxc_t('Start All') ?>">
 </a>
 <a href="#" class="stopALLCONT">
-  <input type="button" value="Stop All">
+  <input type="button" value="<?= lxc_t('Stop All') ?>">
 </a>
 <a href="#" class="freezeALLCONT">
-  <input type="button" value="Freeze All">
+  <input type="button" value="<?= lxc_t('Freeze All') ?>">
 </a>
 <a href="#" class="unfreezeALLCONT">
-  <input type="button" value="Unfreeze All">
+  <input type="button" value="<?= lxc_t('Unfreeze All') ?>">
 </a>
 <div class="spinner"></div>
 
 <? } ?>
 
 <?php } else { ?>
-<h3 style="text-align: center;">Please start the Array!</h3>
+<h3 style="text-align: center;"><?= lxc_t('Please start the Array!') ?></h3>
 <?php } ?>

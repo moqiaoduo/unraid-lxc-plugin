@@ -2,49 +2,50 @@ Menu="LXCSettings:2"
 Title="Misc"
 Tag="list"
 ---
+<?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 
 <form markdown="1" id="changemisccfg" method="post" >
 
-LXC Stop Timeout:
-:  <input type="text" name="TIMEOUT" required="true" pattern="[0-9]+" style="width: 40px" value="<?php echo $settings->default_timeout;?>" class="forbidSpace" required> seconds
+<?= lxc_t('LXC Stop Timeout:') ?>
+:  <input type="text" name="TIMEOUT" required="true" pattern="[0-9]+" style="width: 40px" value="<?php echo $settings->default_timeout;?>" class="forbidSpace" required> <?= lxc_t('seconds') ?>
 
 <blockquote class="inline_help">
-<p>Select the default stop timeout in seconds before the container is killed (value must be greater than 0)</p>
+<p><?= lxc_t('Select the default stop timeout in seconds before the container is killed (value must be greater than 0)') ?></p>
 </blockquote>
 
-LXC Autostart Delay after Array is started:
-:  <input type="text" name="AUTOSTART_DELAY" required="true" pattern="[0-9]+" style="width: 40px" value="<?php echo $settings->default_startdelay;?>" class="forbidSpace" required> seconds
+<?= lxc_t('LXC Autostart Delay after Array is started:') ?>
+:  <input type="text" name="AUTOSTART_DELAY" required="true" pattern="[0-9]+" style="width: 40px" value="<?php echo $settings->default_startdelay;?>" class="forbidSpace" required> <?= lxc_t('seconds') ?>
 
 <blockquote class="inline_help">
-<p>Set the delay in seconds to trigger the Autostart from LXC containers after the Array is started (value must be greater than 0)</p>
+<p><?= lxc_t('Set the delay in seconds to trigger the Autostart from LXC containers after the Array is started (value must be greater than 0)') ?></p>
 </blockquote>
 
-LXC Dynamic Container Stats:
+<?= lxc_t('LXC Dynamic Container Stats:') ?>
 : <select id="dynamic_stats" name="DYNAMIC_STATS">
-  <?= mk_option($settings->dynamic_stats, 'disabled', '_(No)_')?>
-  <?= mk_option($settings->dynamic_stats, 'enabled', '_(Yes)_')?>
+  <?= mk_option($settings->dynamic_stats, 'disabled', lxc_t('No'))?>
+  <?= mk_option($settings->dynamic_stats, 'enabled', lxc_t('Yes'))?>
   </select>
 
 <blockquote class="inline_help">
-<p>Enable dynamic container stat updates (CPU/Memory utilisation, IP Address and Network RX/TX) on LXC page.<br/><b>Note:</b> When disabled IP Address and Network RX/TX will be shown static with the value from loading the page (a manual refresh from the page will update the values).</p>
+<p><?= lxc_t('Enable dynamic container stat updates (CPU/Memory utilisation, IP Address and Network RX/TX) on LXC page.<br/><b>Note:</b> When disabled IP Address and Network RX/TX will be shown static with the value from loading the page (a manual refresh from the page will update the values).') ?></p>
 </blockquote>
 
-LXC Container URL:
+<?= lxc_t('LXC Container URL:') ?>
 :  <input type="text" name="LXC_CONTAINER_URL" required="true" style="width: 300px" pattern="^[a-zA-Z0-9\-_:.\/]*$" value="<?php echo $settings->default_cont_url;?>" placeholder="images.linuxcontainers.org" class="forbidSpace" required>
 
 <blockquote class="inline_help">
-<p>If you have a mirror that follows the linuxcontainers.org standards you can specify it here (without https://)</p>
-<p style="color: #ff0000;">Only change if you know what you are doing!</p> 
-<p><b>Default:</b> <code>images.linuxcontainers.org</code></p>
+<p><?= lxc_t('If you have a mirror that follows the linuxcontainers.org standards you can specify it here (without https://)') ?></p>
+<p style="color: #ff0000;"><?= lxc_t('Only change if you know what you are doing!') ?></p> 
+<p><b><?= lxc_t('Default:') ?></b> <code>images.linuxcontainers.org</code></p>
 </blockquote>
 
 <p>&nbsp;</p>
 
-Update configuration:
-:  <input type="submit" name="changeMISC" value="_(Apply)_">
+<?= lxc_t('Update configuration:') ?>
+:  <input type="submit" name="changeMISC" value="<?= lxc_t('Apply') ?>">
 
 <blockquote class="inline_help">
-<p>This will NOT restart the LXC service</p>
+<p><?= lxc_t('This will NOT restart the LXC service') ?></p>
 </blockquote>
 
 </form>

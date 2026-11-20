@@ -3,10 +3,12 @@ Markdown="false"
 ---
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<?= lxc_i18n_js() ?>
 <script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
 
 
 <?php
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
 $settings = new Settings();
 
@@ -41,15 +43,15 @@ $avail_images_json = json_encode($avail_images);
   <form id="addContainer" autocomplete="off">
     <div class="">
       <dl>
-        <dt>Container Name:</dt>
+        <dt><?= lxc_t('Container Name:') ?></dt>
         <dd><input type="text" name="contName" pattern="[a-zA-Z0-9][A-Za-z0-9 \-_.]{0,49}" required placeholder="DebianLXC" class="forbidSpace">
         </dd>
       </dl>
     </div>
     <div class="">
       <dl>
-        <dt>Container Description:</dt>
-        <dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="Your Description or empty">
+        <dt><?= lxc_t('Container Description:') ?></dt>
+        <dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="<?= lxc_t('Your Description or empty') ?>">
         </dd>
       </dl>
     </div>
@@ -57,12 +59,12 @@ $avail_images_json = json_encode($avail_images);
 <?php if (empty($json_data)) { ?>
     <div class="">
       <dl>
-        <dt>Distribution:</dt>
+        <dt><?= lxc_t('Distribution:') ?></dt>
         <dd><input type="text" name="contDistribution" pattern="[a-zA-Z0-9\.]+" style="text-transform:lowercase" required="true" value="debian" class="forbidSpace">
           <?php if($settings->default_cont_url === 'images.linuxcontainers.org') {
-            echo 'You can get a full list of available container images <a title=" Linux Containers - Image server" href="https://uk.lxd.images.canonical.com/" target="_blank">HERE</a>';
+            echo lxc_t('You can get a full list of available container images <a title=" Linux Containers - Image server" href="https://uk.lxd.images.canonical.com/" target="_blank">HERE</a>');
           } else {
-            echo 'To go to your custom set mirror click <a href="https://' . htmlspecialchars($settings->default_cont_url) . '" target="_blank">HERE</a>';
+            echo lxc_tf('To go to your custom set mirror click <a href="https://%s" target="_blank">HERE</a>', htmlspecialchars($settings->default_cont_url));
           } ?>
         </dd>
       </dl>
@@ -70,7 +72,7 @@ $avail_images_json = json_encode($avail_images);
 
     <div class="">
       <dl>
-        <dt>Release:</dt>
+        <dt><?= lxc_t('Release:') ?></dt>
         <dd><input type="text" name="contRelease" pattern="[a-zA-Z0-9\.]+" style="text-transform:lowercase" required="true" value="bullseye" class="forbidSpace"></dd>
       </dl>
     </div>
@@ -78,9 +80,9 @@ $avail_images_json = json_encode($avail_images);
 <?php } else { ?>
     <div class="">
       <dl>
-        <dt>Distribution:</dt>
+        <dt><?= lxc_t('Distribution:') ?></dt>
         <dd><select id="distribution-select" name="contDistribution"  class="forbidSpace" required>
-        <option name="contDistribution" value="">Select a Distribution</option>
+        <option name="contDistribution" value=""><?= lxc_t('Select a Distribution') ?></option>
         <?php foreach ($avail_images as $distribution => $releases) : ?>
         <option value="<?= $distribution ?>"><?= $distribution ?></option>
         <?php endforeach; ?></select></dd>
@@ -89,7 +91,7 @@ $avail_images_json = json_encode($avail_images);
 
     <div class="">
       <dl>
-        <dt>Release:</dt>
+        <dt><?= lxc_t('Release:') ?></dt>
         <dd><select name="contRelease" id="release-select" class="forbidSpace" required></select></dd>
       </dl>
     </div>
@@ -101,7 +103,7 @@ $avail_images_json = json_encode($avail_images);
 
       var defaultOption = document.createElement("option");
       defaultOption.value = "";
-      defaultOption.text = "Select a Release";
+      defaultOption.text = <?= json_encode(lxc_t("Select a Release")) ?>;
       releaseSelect.add(defaultOption);
       releaseSelect.disabled = true;
 
@@ -129,10 +131,10 @@ $avail_images_json = json_encode($avail_images);
 
     <div class="">
       <dl>
-        <dt>Mac Address:</dt>
+        <dt><?= lxc_t('Mac Address:') ?></dt>
         <dd style="display: grid;">
           <input type="text" name="contMac" required="true" id="mac" style="text-transform:uppercase" value="<?= getNewMacAddress(); ?>"  class="forbidSpace">
-          <div id="emac" class="emac">Invalid MAC address</div>
+          <div id="emac" class="emac"><?= lxc_t('Invalid MAC address') ?></div>
         </dd>
 
       </dl>
@@ -140,20 +142,20 @@ $avail_images_json = json_encode($avail_images);
 
     <div class="">
       <dl>
-        <dt>Autostart:</dt>
+        <dt><?= lxc_t('Autostart:') ?></dt>
         <dd><input type="checkbox" name="contAutostart"></dd>
       </dl>
     </div>
 
     <div class="">
       <dl>
-        <dt>Start after creation:</dt>
+        <dt><?= lxc_t('Start after creation:') ?></dt>
         <dd><input type="checkbox" name="contStart" checked></dd>
       </dl>
     </div>
 
-    <input type="submit" value="_(Create)_">
-    <a href="/LXC" class="button">Done</a>
+    <input type="submit" value="<?= lxc_t('Create') ?>">
+    <a href="/LXC" class="button"><?= lxc_t('Done') ?></a>
 
   </form>
 </div>

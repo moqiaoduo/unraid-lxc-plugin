@@ -1,3 +1,6 @@
+var LXC_T = window.LXC_T || function (s) { return s; };
+var LXC_TF = window.LXC_TF || function (s) { return s; };
+
 //Don't execute commands again if page is refreshed
 if ( window.history.replaceState ) {
   window.history.replaceState( null, null, window.location.href );
@@ -35,8 +38,8 @@ function saveConfig(name) {
   if (isSwal2) {
     const swalObj = (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') ? Swal : swal;
     swalObj.fire({
-      title: "Saving",
-      html: "Saving configuration for LXC container: <span style=\"font-weight:bold\">" + name + "</span>, please wait...",
+      title: LXC_T("Saving"),
+      html: LXC_TF("Saving configuration for LXC container: <span style=\"font-weight:bold\">%s</span>, please wait...", name),
       allowEscapeKey: false,
       showConfirmButton: false,
       allowOutsideClick: false,
@@ -48,8 +51,8 @@ function saveConfig(name) {
     });
   } else if (typeof swal === 'function') {
     swal({
-      title: "Saving",
-      text: "Saving configuration for LXC container: <span style=\"font-weight:bold\">" + name + "</span>, please wait...",
+      title: LXC_T("Saving"),
+      text: LXC_TF("Saving configuration for LXC container: <span style=\"font-weight:bold\">%s</span>, please wait...", name),
       closeOnEsc: false,
       showConfirmButton: false,
       allowOutsideClick: false,
@@ -95,7 +98,7 @@ function waitForElement(elementPath, callBack){
 
 // Function that shows the dialog
 function showDialog(callback, text, title) {
-  title = title || "Proceed?";
+  title = title || LXC_T("Proceed?");
   const isSwal2 = (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') ||
                   (typeof swal !== 'undefined' && typeof swal.fire === 'function');
   if (isSwal2) {
@@ -105,8 +108,8 @@ function showDialog(callback, text, title) {
       html: text,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: "Proceed",
-      cancelButtonText: "Cancel"
+      confirmButtonText: LXC_T("Proceed"),
+      cancelButtonText: LXC_T("Cancel")
     }).then(function(result) {
       if (typeof callback === 'function') {
         callback(result.isConfirmed || result.value === true);
@@ -119,8 +122,8 @@ function showDialog(callback, text, title) {
       type: 'warning',
       html: true,
       showCancelButton: true,
-      confirmButtonText: "Proceed",
-      cancelButtonText: "Cancel"
+      confirmButtonText: LXC_T("Proceed"),
+      cancelButtonText: LXC_T("Cancel")
     },
     function(confirm){
       if (typeof callback === 'function') {
@@ -154,8 +157,8 @@ function showPrompt(callback, title, text, placeholder) {
       input: 'text',
       inputPlaceholder: placeholder,
       showCancelButton: true,
-      confirmButtonText: "OK",
-      cancelButtonText: "Cancel"
+      confirmButtonText: LXC_T("OK"),
+      cancelButtonText: LXC_T("Cancel")
     }).then(function(result) {
       if (typeof callback === 'function') {
         if (result.isConfirmed) {
@@ -239,21 +242,21 @@ function showStatus(action, id, title, text) {
         // set the onprogress event handler
         xhr.onprogress = function() {
           // replace the '#output' element inner HTML with the received part of the response
-          dialogContent.html("<p>" + title + " " + id + ", please wait until the DONE button is displayed!</p><p>" + xhr.responseText + "</p>");
+          dialogContent.html("<p>" + LXC_TF("%s %s, please wait until the DONE button is displayed!", title, id) + "</p><p>" + xhr.responseText + "</p>");
         }
         return xhr;
       },
       beforeSend: function () {
-        dialogContent.append("<p>" + title + " " + id + ", please wait until the DONE button is displayed!</p>");
+        dialogContent.append("<p>" + LXC_TF("%s %s, please wait until the DONE button is displayed!", title, id) + "</p>");
         statusInterval = setInterval(function () {
           dialogContent.append(".");
         }, 5000);
       },
       success: function (data) {
-    if (data.toLowerCase().indexOf("error, failed to ") === -1) {
+    if (data.indexOf("lxc-error") === -1) {
           dialogContent.append("<p/>");
     }
-        dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">Done</button></p>');
+        dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">' + LXC_T("Done") + '</button></p>');
         clearInterval(statusInterval);
       }
     });
@@ -423,7 +426,7 @@ function createContainer(name, description, distribution, release, startcont, au
   Shadowbox.open({
     content: '<div id="dialogContent" class="logLine spacing"></div>',
     player: 'html',
-    title: "Create Container",
+    title: LXC_T("Create Container"),
     onClose: function () {
       location.href = '/LXC';
     },
@@ -452,29 +455,29 @@ function createContainer(name, description, distribution, release, startcont, au
         // set the onprogress event handler
         xhr.onprogress = function() {
           // replace the '#output' element inner HTML with the received part of the response
-          dialogContent.html("<p>Creating container, please wait until the DONE button is displayed!</p><p>" + xhr.responseText + "</p>");
+          dialogContent.html("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p><p>" + xhr.responseText + "</p>");
         }
         return xhr;
       },
       beforeSend: function () {
-        dialogContent.append("<p>Creating container, please wait until the DONE button is displayed!</p>");
+        dialogContent.append("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p>");
         statusInterval = setInterval(function () {
           dialogContent.append(".");
         }, 5000);
       },
       success: function (data) {
-    if (data.toLowerCase().indexOf("error, failed to create container") === -1) {
-          dialogContent.append("<p>To connect to the console from the container, start the container and select Console from the context menu.</p>");
-          dialogContent.append("<p>If you want to connect to the container console from the Unraid terminal, start the container and type in:</p>");
+    if (data.indexOf("lxc-error") === -1) {
+          dialogContent.append("<p>" + LXC_T("To connect to the console from the container, start the container and select Console from the context menu.") + "</p>");
+          dialogContent.append("<p>" + LXC_T("If you want to connect to the container console from the Unraid terminal, start the container and type in:") + "</p>");
           dialogContent.append("<p>lxc-attach " + name + "</p>")
-          dialogContent.append('<p>It is recommended to attach to the corresponding shell by typing in for example:</p>');
+          dialogContent.append('<p>' + LXC_T("It is recommended to attach to the corresponding shell by typing in for example:") + '</p>');
           dialogContent.append("<p>lxc-attach " + name + " /bin/bash</p>");
     }
         let HTMLline = '<p class="centered">';
         if (startcont) {
-            HTMLline += '<button type="button" onclick="startConsole(\'' + name + '\', true);">Open Terminal</button>';
+            HTMLline += '<button type="button" onclick="startConsole(\'' + name + '\', true);">' + LXC_T("Open Terminal") + '</button>';
         }
-        HTMLline += '<button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\';">Done</button>';
+        HTMLline += '<button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\';">' + LXC_T("Done") + '</button>';
         HTMLline += '</p>';
         dialogContent.append(HTMLline);
         clearInterval(statusInterval);
@@ -490,7 +493,7 @@ function createContainerCAApp(name, description, repository, webui, icon, startc
   Shadowbox.open({
     content: '<div id="dialogContent" class="logLine spacing"></div>',
     player: 'html',
-    title: "Create Container from Template",
+    title: LXC_T("Create Container from Template"),
     onClose: function () {
       location.href = '/LXC';
     },
@@ -524,25 +527,25 @@ function createContainerCAApp(name, description, repository, webui, icon, startc
         // set the onprogress event handler
         xhr.onprogress = function() {
           // replace the '#output' element inner HTML with the received part of the response
-          dialogContent.html("<p>Creating container " + name + " from repository: " + repository + "<br/>Please wait until the DONE button is displayed, this can take a few minutes depending on the container size and connection speed...</p><p>" + xhr.responseText + "</p>");
+          dialogContent.html("<p>" + LXC_TF("Creating container %s from repository: %s<br/>Please wait until the DONE button is displayed, this can take a few minutes depending on the container size and connection speed...", name, repository) + "</p><p>" + xhr.responseText + "</p>");
         }
         return xhr;
       },
       beforeSend: function () {
-        dialogContent.append("<p>Creating container " + name + " from repository: " + repository + "<br/>Please wait until the DONE button is displayed, this can take a few minutes depending on the container size and connection speed...</p>");
+        dialogContent.append("<p>" + LXC_TF("Creating container %s from repository: %s<br/>Please wait until the DONE button is displayed, this can take a few minutes depending on the container size and connection speed...", name, repository) + "</p>");
         statusInterval = setInterval(function () {
           dialogContent.append(".");
         }, 5000);
       },
       success: function (data) {
-    if (data.toLowerCase().indexOf("error, failed to create container") === -1) {
-          dialogContent.append("<p>Check out the README.md from the container if further steps are necessary to configure the container!</p>");
+    if (data.indexOf("lxc-error") === -1) {
+          dialogContent.append("<p>" + LXC_T("Check out the README.md from the container if further steps are necessary to configure the container!") + "</p>");
     }
         let HTMLline = '<p class="centered">';
         if (startcont) {
-            HTMLline += '<button type="button" onclick="startConsole(\'' + name + '\', true);">Open Terminal</button>';
+            HTMLline += '<button type="button" onclick="startConsole(\'' + name + '\', true);">' + LXC_T("Open Terminal") + '</button>';
         }
-        HTMLline += '<button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\';">Done</button>';
+        HTMLline += '<button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\';">' + LXC_T("Done") + '</button>';
         HTMLline += '</p>';
         dialogContent.append(HTMLline);
         clearInterval(statusInterval);
@@ -558,7 +561,7 @@ function createCopy(name, description, container, autostart, mac) {
   Shadowbox.open({
     content: '<div id="dialogContent" class="logLine spacing"></div>',
     player: 'html',
-    title: "Copy Container",
+    title: LXC_T("Copy Container"),
     onClose: function () {
       location.href = '/LXC';
     },
@@ -585,23 +588,23 @@ function createCopy(name, description, container, autostart, mac) {
         // set the onprogress event handler
         xhr.onprogress = function() {
           // replace the '#output' element inner HTML with the received part of the response
-          dialogContent.html("<p>Copying container, please wait until the DONE button is displayed!</p><p>" + xhr.responseText + "</p>");
+          dialogContent.html("<p>" + LXC_T("Copying container, please wait until the DONE button is displayed!") + "</p><p>" + xhr.responseText + "</p>");
         }
         return xhr;
       },
       beforeSend: function () {
-        dialogContent.append("Copying container, please wait until the DONE button is displayed!");
+        dialogContent.append(LXC_T("Copying container, please wait until the DONE button is displayed!"));
         statusInterval = setInterval(function () {
           dialogContent.append("<p>......</p>");
         }, 5000);
       },
       success: function (data) {
-        dialogContent.append("<p>To connect to the console from the container, start the container and select Console from the context menu.</p>");
-        dialogContent.append("<p>If you want to connect to the container console from the Unraid terminal, start the container and type in:</p>");
+        dialogContent.append("<p>" + LXC_T("To connect to the console from the container, start the container and select Console from the context menu.") + "</p>");
+        dialogContent.append("<p>" + LXC_T("If you want to connect to the container console from the Unraid terminal, start the container and type in:") + "</p>");
         dialogContent.append("<p>lxc-attach " + name + "</p>")
-        dialogContent.append('<p>It is recommended to attach to the corresponding shell by typing in for example:</p>');
+        dialogContent.append('<p>' + LXC_T("It is recommended to attach to the corresponding shell by typing in for example:") + '</p>');
         dialogContent.append("<p>lxc-attach " + name + " /bin/bash</p>");
-        dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">Done</button></p>');
+        dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">' + LXC_T("Done") + '</button></p>');
         clearInterval(statusInterval);
       }
     });
@@ -639,7 +642,7 @@ $(function() {
           parent.window.location.reload();
         });
       }
-    }, "<span style=\"color:red;font-weight:bold;\">ATTENTION</span><br/>Do you really want to destroy this Snapshot? This is IRREVERSIBLE and will delete the snapshot and all data in it!");
+    }, "<span style=\"color:red;font-weight:bold;\">" + LXC_T("ATTENTION") + "</span><br/>" + LXC_T("Do you really want to destroy this Snapshot? This is IRREVERSIBLE and will delete the snapshot and all data in it!"));
   });
 
   // Listener for deleting backups
@@ -659,7 +662,7 @@ $(function() {
           parent.window.location.reload();
         });
       }
-    }, "<span style=\"color:red;font-weight:bold;\">ATTENTION</span><br/>Do you really want to delete this backup? This is IRREVERSIBLE and will delete the backup!");
+    }, "<span style=\"color:red;font-weight:bold;\">" + LXC_T("ATTENTION") + "</span><br/>" + LXC_T("Do you really want to delete this backup? This is IRREVERSIBLE and will delete the backup!"));
   });
 
   // Listener for restoring from snapshot form
@@ -673,7 +676,7 @@ $(function() {
     Shadowbox.open({
       content: '<div id="dialogContent" class="logLine spacing"></div>',
       player: 'html',
-      title: "Restoring Container from snapshot",
+      title: LXC_T("Restoring Container from snapshot"),
       onClose: function () {
         location.href = '/LXC';
       },
@@ -701,24 +704,24 @@ $(function() {
           // set the onprogress event handler
           xhr.onprogress = function() {
             // replace the '#output' element inner HTML with the received part of the response
-            dialogContent.html("<p>Creating container, please wait until the DONE button is displayed!</p><p>" + xhr.responseText + "</p>");
+            dialogContent.html("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p><p>" + xhr.responseText + "</p>");
           }
           return xhr;
         },
         beforeSend: function () {
-          dialogContent.append("<p>Creating container, please wait until the DONE button is displayed!</p>");
+          dialogContent.append("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p>");
           statusInterval = setInterval(function () {
             dialogContent.append(".");
           }, 5000);
         },
         success: function (data) {
-          dialogContent.append("<p style=\"color:green;\">Restoring container " + name + " done!</p>");
-          dialogContent.append("<p>To connect to the console from the container, start the container and select Console from the context menu.</p>");
-          dialogContent.append("<p>If you want to connect to the container console from the Unraid terminal, start the container and type in:</p>");
+          dialogContent.append("<p style=\"color:green;\">" + LXC_TF("Restoring container %s done!", name) + "</p>");
+          dialogContent.append("<p>" + LXC_T("To connect to the console from the container, start the container and select Console from the context menu.") + "</p>");
+          dialogContent.append("<p>" + LXC_T("If you want to connect to the container console from the Unraid terminal, start the container and type in:") + "</p>");
           dialogContent.append("<p>lxc-attach " + name + "</p>")
-          dialogContent.append('<p>It is recommended to attach to the corresponding shell by typing in for example:</p>');
+          dialogContent.append('<p>' + LXC_T("It is recommended to attach to the corresponding shell by typing in for example:") + '</p>');
           dialogContent.append("<p>lxc-attach " + name + " /bin/bash</p>");
-          dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">Done</button></p>');
+          dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">' + LXC_T("Done") + '</button></p>');
           clearInterval(statusInterval);
         }
       });
@@ -736,7 +739,7 @@ $(function() {
     Shadowbox.open({
       content: '<div id="dialogContent" class="logLine spacing"></div>',
       player: 'html',
-      title: "Restoring Container from backup",
+      title: LXC_T("Restoring Container from backup"),
       onClose: function () {
         location.href = '/LXC';
       },
@@ -764,25 +767,25 @@ $(function() {
           // set the onprogress event handler
           xhr.onprogress = function() {
             // replace the '#output' element inner HTML with the received part of the response
-            dialogContent.html("<p>Creating container, please wait until the DONE button is displayed!</p><p>" + xhr.responseText + "</p>");
+            dialogContent.html("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p><p>" + xhr.responseText + "</p>");
           }
           return xhr;
         },
         beforeSend: function () {
-          dialogContent.append("<p>Creating container, please wait until the DONE button is displayed!</p>");
+          dialogContent.append("<p>" + LXC_T("Creating container, please wait until the DONE button is displayed!") + "</p>");
           statusInterval = setInterval(function () {
             dialogContent.append(".");
           }, 5000);
         },
         success: function (data) {
-          dialogContent.append("<p style=\"color:green;\">Restoring container " + name + " done!</p>");
-          dialogContent.append("<p>To connect to the console from the container, start the container and select Console from the context menu.</p>");
-          dialogContent.append("<p>If you want to connect to the container console from the Unraid terminal, start the container and type in:</p>");
+          dialogContent.append("<p style=\"color:green;\">" + LXC_TF("Restoring container %s done!", name) + "</p>");
+          dialogContent.append("<p>" + LXC_T("To connect to the console from the container, start the container and select Console from the context menu.") + "</p>");
+          dialogContent.append("<p>" + LXC_T("If you want to connect to the container console from the Unraid terminal, start the container and type in:") + "</p>");
           dialogContent.append("<p>lxc-attach " + name + "</p>")
-          dialogContent.append('<p>It is recommended to attach to the corresponding shell by typing in for example:</p>');
+          dialogContent.append('<p>' + LXC_T("It is recommended to attach to the corresponding shell by typing in for example:") + '</p>');
           dialogContent.append("<p>lxc-attach " + name + " /bin/bash</p>");
-          dialogContent.append("<p>Note: You will only see as much backups as you have configured in the Global backups settings (oldest backups will be deleted first).</p>");
-          dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">Done</button></p>');
+          dialogContent.append("<p>" + LXC_T("Note:") + " " + LXC_T("You will only see as much backups as you have configured in the global backup settings (oldest backups will be deleted first).") + "</p>");
+          dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="top.Shadowbox.close(); location.href = \'/LXC\'">' + LXC_T("Done") + '</button></p>');
           clearInterval(statusInterval);
         },
       });
@@ -843,7 +846,7 @@ $(function() {
       Shadowbox.open({
         content: '<div id="dialogContent" class="logLine spacing"></div>',
         player: 'html',
-        title: "Show/Edit Configuration",
+        title: LXC_T("Show/Edit Configuration"),
         onClose: function() {
           location.reload();
         },
@@ -863,8 +866,8 @@ $(function() {
           success: function(data) {
             let dialogContent = $("#dialogContent");
             dialogContent.append('<textarea id="configEditor" style="width: 100%; max-width: 800px; height: 600px; margin: 0 auto; display: block; padding: 10px; font-family: monospace; box-sizing: border-box;">' + data + '</textarea>');
-            dialogContent.append('<p class="centered" style="color: red;">WARNING: Saving the configuration will restart a running container!</p>');
-            dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="saveConfig(\'' + container + '\')">Save</button><button class="logLine" type="button" onclick="top.Shadowbox.close();">Done</button></p>');
+            dialogContent.append('<p class="centered" style="color: red;">' + LXC_T("WARNING: Saving the configuration will restart a running container!") + '</p>');
+            dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="saveConfig(\'' + container + '\')">' + LXC_T("Save") + '</button><button class="logLine" type="button" onclick="top.Shadowbox.close();">' + LXC_T("Done") + '</button></p>');
           }
         });
       });
@@ -896,9 +899,9 @@ $(function() {
     let id = this.id
     showDialog(function(response) {
       if (response) {
-        showStatus("destroyCONT", id, "Destroy Container", "Destroying Container " + id);
+        showStatus("destroyCONT", id, LXC_T("Destroy Container"), LXC_TF("Destroying Container %s", id));
       }
-    }, "<span style=\"color:red;font-weight:bold;\">ATTENTION</span><br/>Do you really want to destroy the LXC Container: <span style=\"font-weight:bold\">" + id + "</span>?<br/>This is IRREVERSIBLE and will delete the container, snapshots and all data in it!<br/><br/><i>Backups will not be deleted!</i>");
+    }, "<span style=\"color:red;font-weight:bold;\">" + LXC_T("ATTENTION") + "</span><br/>" + LXC_TF("Do you really want to destroy the LXC Container: <span style=\"font-weight:bold\">%s</span>?", id) + "<br/>" + LXC_T("This is IRREVERSIBLE and will delete the container, snapshots and all data in it!") + "<br/><br/><i>" + LXC_T("Backups will not be deleted!") + "</i>");
   });
 
   // Listener to snapshot container
@@ -906,9 +909,9 @@ $(function() {
     let id = this.id;
     showDialog(function(response) {
       if (response) {
-        showStatus("snapshotCONT", id, "Snapshot Container", "Snapshotting Container " + id);
+        showStatus("snapshotCONT", id, LXC_T("Snapshot Container"), LXC_TF("Snapshotting Container %s", id));
       }
-    }, "This action will stop the LXC Container and start it again if it was running.");
+    }, LXC_T("This action will stop the LXC Container and start it again if it was running."));
   });
 
   // Listener to backup container
@@ -916,9 +919,9 @@ $(function() {
     let id = this.id;
     showDialog(function(response) {
       if (response) {
-        showStatus("backupCONT", id, "Backup Container", "Backup Container " + id);
+        showStatus("backupCONT", id, LXC_T("Backup Container"), LXC_TF("Backup Container %s", id));
       }
-    }, "This action will stop the LXC Container and start it again if it was running.<br/><br/><span style=\"font-weight:bold;\">Note:</span> <i>You will only see as much backups as you have configured in the global backup settings (oldest backups will be deleted first).</i>");
+    }, LXC_T("This action will stop the LXC Container and start it again if it was running.") + "<br/><br/><span style=\"font-weight:bold;\">" + LXC_T("Note:") + "</span> <i>" + LXC_T("You will only see as much backups as you have configured in the global backup settings (oldest backups will be deleted first).") + "</i>");
   });
 
   // Listener to set description
@@ -945,7 +948,7 @@ $(function() {
           parent.window.location.reload();
         });
       }
-    }, 'Description', 'Max. 50 alphanumeric characters.\nLeave empty to delete the description.', 'Description or empty')
+    }, LXC_T('Description'), LXC_T("Max. 50 alphanumeric characters.\nLeave empty to delete the description."), LXC_T('Description or empty'))
   });
 
   $(".webuiCONT").on("click", function() {
@@ -971,7 +974,7 @@ $(function() {
           parent.window.location.reload();
         });
       }
-    }, 'WebUI URL', 'Enter your URL like: http://192.168.0.10:8080 or https://subdomain.yourdomain.net\nLeave empty to delete the WebUI URL.', 'WebUI URL or empty')
+    }, LXC_T('WebUI URL'), LXC_T("Enter your URL like: http://192.168.0.10:8080 or https://subdomain.yourdomain.net\nLeave empty to delete the WebUI URL."), LXC_T('WebUI URL or empty'))
   });
 
   // Listener for add container from CA App
@@ -994,4 +997,4 @@ $(function() {
 
 })
 
-$('.autostart').switchButton({labels_placement:'right', on_label:"On", off_label:"Off"});
+$('.autostart').switchButton({labels_placement:'right', on_label:LXC_T("On"), off_label:LXC_T("Off")});

@@ -2,37 +2,38 @@ Menu="LXCSettings:3"
 Title="Backup"
 Tag="archive"
 ---
+<?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 <form markdown="1" id="changebackupcfg" method="post" >
-Enable Global Backup settings:
+<?= lxc_t('Enable Global Backup settings:') ?>
 : <select id="backup_enabled" name="BACKUP_ENABLED">
-  <?= mk_option($settings->backup_enabled, 'disabled', '_(No)_')?>
-  <?= mk_option($settings->backup_enabled, 'enabled', '_(Yes)_')?>
+  <?= mk_option($settings->backup_enabled, 'disabled', lxc_t('No'))?>
+  <?= mk_option($settings->backup_enabled, 'enabled', lxc_t('Yes'))?>
   </select>
 
 <blockquote class="inline_help">
-<p>Enable or Disable Global Backup settings</p>
-<p>If enabled a additional Backups tab on the <a href="/LXC" target="_blank">LXC</a> page will show up.</p>
-<p>This also allows you to more easily create backups with <code>lxc-autobackup</code> from the command line eg: <code>lxc-autobackup lxccontainername</code></p>
+<p><?= lxc_t('Enable or Disable Global Backup settings') ?></p>
+<p><?= lxc_t('If enabled a additional Backups tab on the <a href="/LXC" target="_blank">LXC</a> page will show up.') ?></p>
+<p><?= lxc_t('This also allows you to more easily create backups with <code>lxc-autobackup</code> from the command line eg: <code>lxc-autobackup lxccontainername</code>') ?></p>
 </blockquote>
 
 <? if ($settings->backup_enabled === 'enabled') { ?>
 
-Default Backup path:
+<?= lxc_t('Default Backup path:') ?>
 : <input type="text" id="backupdir" name="BACKUPDIR" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="<?=is_dir('/mnt/')?'/mnt/':'/mnt'?>" value="<?=htmlspecialchars($settings->backup_path)?>" placeholder="Click to Select" pattern="^[^\\]*/$" class="forbidSpace" required>
-  <? if(!is_dir($settings->backup_path)):?><span><i class="fa fa-warning icon warning"></i> Path does not exist, </span><span style="color: #ff0000;">this path will be created after applying the settings!</span> <? endif;?>
+  <? if(!is_dir($settings->backup_path)):?><span><i class="fa fa-warning icon warning"></i> <?= lxc_t('Path does not exist, ') ?></span><span style="color: #ff0000;"><?= lxc_t('this path will be created after applying the settings!') ?></span> <? endif;?>
 
 <blockquote class="inline_help">
-<p>The path where you want to store your LXC container backups (this path should not be in the Default LXC path!).</p>
+<p><?= lxc_t('The path where you want to store your LXC container backups (this path should not be in the Default LXC path!).') ?></p>
 </blockquote>
 
-Backups to keep:
+<?= lxc_t('Backups to keep:') ?>
 :  <input type="text" id="backupstokeep" name="BACKUPS_TO_KEEP" required="true" pattern="[1-9][0-9]*" style="width: 40px" value="<?php echo $settings->backup_keep;?>" class="forbidSpace" required>
 
 <blockquote class="inline_help">
-<p>Specify how many backups you want to keep (must be an integer and greater than 0).</p>
+<p><?= lxc_t('Specify how many backups you want to keep (must be an integer and greater than 0).') ?></p>
 </blockquote>
 
-Compression Ratio:
+<?= lxc_t('Compression Ratio:') ?>
 <?php $selectedRatio = (isset($settings->backup_compression) && trim((string)$settings->backup_compression) !== '') ? $settings->backup_compression : "6"; ?>
 : <select id="compression_ratio" name="COMPRESSION_RATIO">
   <?php
@@ -42,11 +43,11 @@ Compression Ratio:
   </select>
 
 <blockquote class="inline_help">
-<p>Select your compression ratio 0=lowest, 9=highest (default: 6)</p>
-<p><b style="color: #ff0000;">ATTENTION:</b> Values between 7 and 9 will require at least 12GB of free RAM during the compression!</p>
+<p><?= lxc_t('Select your compression ratio 0=lowest, 9=highest (default: 6)') ?></p>
+<p><b style="color: #ff0000;"><?= lxc_t('ATTENTION:') ?></b> <?= lxc_t('Values between 7 and 9 will require at least 12GB of free RAM during the compression!') ?></p>
 </blockquote>
 
-CPU Threads:
+<?= lxc_t('CPU Threads:') ?>
 <?php
   $cpu_threads = (int)trim(shell_exec('nproc') ?? '1');
   if ($cpu_threads < 1) $cpu_threads = 1;
@@ -60,14 +61,14 @@ CPU Threads:
   </select>
 
 <blockquote class="inline_help">
-<p>Select how many CPU threads you want to use for the compression task (default: half of all your threads).</p>
-<p><b style="color: #ff0000;">ATTENTION:</b> If you are selecting all threads this can have a serious impact on your system and maybe also slow down the GUI!</p>
+<p><?= lxc_t('Select how many CPU threads you want to use for the compression task (default: half of all your threads).') ?></p>
+<p><b style="color: #ff0000;"><?= lxc_t('ATTENTION:') ?></b> <?= lxc_t('If you are selecting all threads this can have a serious impact on your system and maybe also slow down the GUI!') ?></p>
 </blockquote>
 
-Use Snapshot:
+<?= lxc_t('Use Snapshot:') ?>
 : <select id="use_snapshot" name="USE_SNAPSHOT">
-  <?= mk_option($settings->backup_use_snapshot, 'disabled', '_(No)_')?>
-  <?= mk_option($settings->backup_use_snapshot, 'enabled', '_(Yes)_')?>
+  <?= mk_option($settings->backup_use_snapshot, 'disabled', lxc_t('No'))?>
+  <?= mk_option($settings->backup_use_snapshot, 'enabled', lxc_t('Yes'))?>
   </select>
 
 <?php } else { ?>
@@ -81,16 +82,16 @@ Use Snapshot:
 <?php } ?>
 
 <blockquote class="inline_help">
-<p>If enabled a temporary snapshot is created from which the backup will be created from.<br/>This is usefull if you are using a high compression ratio and you have a container that needs to be up and running as quickly as possible again.</p>
+<p><?= lxc_t('If enabled a temporary snapshot is created from which the backup will be created from.<br/>This is usefull if you are using a high compression ratio and you have a container that needs to be up and running as quickly as possible again.') ?></p>
 </blockquote>
 
 <p>&nbsp;</p>
 
-Update configuration:
-:  <input type="submit" name="changeBACKUP" value="_(Apply)_">
+<?= lxc_t('Update configuration:') ?>
+:  <input type="submit" name="changeBACKUP" value="<?= lxc_t('Apply') ?>">
 
 <blockquote class="inline_help">
-<p>This will NOT restart the LXC service</p>
+<p><?= lxc_t('This will NOT restart the LXC service') ?></p>
 </blockquote>
 
 </form>

@@ -2,6 +2,7 @@ Title="Create LXC Container from Backup"
 Markdown="false"
 ---
 <?php
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
 $settings = new Settings();
 
@@ -15,6 +16,7 @@ $backup = $_GET['backup'] ?? '';
   let container = <?= json_encode($container); ?>;
   let backup = <?= json_encode($backup); ?>;
 </script>
+<?= lxc_i18n_js() ?>
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
 <script src="/plugins/lxc/js/lxc.js"></script>
 
@@ -23,52 +25,52 @@ $backup = $_GET['backup'] ?? '';
 
 <div class="">
 <dl>
-<dt>Container Name:</dt>
+<dt><?= lxc_t('Container Name:') ?></dt>
 <dd><input type="text" name="contName" pattern="[a-zA-Z0-9][A-Za-z0-9 \-_.]{0,49}"  required placeholder="<?= htmlspecialchars($container, ENT_QUOTES, 'UTF-8') ?>_restored" class="forbidSpace" required></dd>
 </dl>
 </div>
 
 <div class="">
 <dl>
-<dt>Container Description:</dt>
-<dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="Your Description or empty">
+<dt><?= lxc_t('Container Description:') ?></dt>
+<dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="<?= lxc_t('Your Description or empty') ?>">
 </dd>
 </dl>
 </div>
 
 <div class="">
 <dl>
-<dt>Backup Container Name:</dt>
+<dt><?= lxc_t('Backup Container Name:') ?></dt>
 <dd><input type="text" name="contBackupName" required value="<?= htmlspecialchars($container, ENT_QUOTES, 'UTF-8') ?>" disabled></dd>
 </dl>
 </div>
 
 <div class="">
 <dl>
-<dt>Backup:</dt>
+<dt><?= lxc_t('Backup:') ?></dt>
 <dd><input type="text" name="contBackupDate" required value="<?= htmlspecialchars($backup, ENT_QUOTES, 'UTF-8') ?>" disabled></dd>
 </dl>
 </div>
 
 <div class="">
 <dl>
-<dt>Mac Address:</dt>
+<dt><?= lxc_t('Mac Address:') ?></dt>
   <dd style="display: grid;">
     <input type="text" name="contMac" required id="mac" style="text-transform:uppercase" value="<?= getNewMacAddress(); ?>" class="forbidSpace">
-    <div id="emac" class="emac">Invalid MAC address</div>
+    <div id="emac" class="emac"><?= lxc_t('Invalid MAC address') ?></div>
   </dd>
 </dl>
 </div>
 
 <div class="">
 <dl>
-<dt>Autostart:</dt>
+<dt><?= lxc_t('Autostart:') ?></dt>
 <dd><input type="checkbox" name="contAutostart" checked></dd>
 </dl>
 </div>
 
-<input type="submit" value="_(Create)_">
-<a href="/LXC" class="button">Done</a>
+<input type="submit" value="<?= lxc_t('Create') ?>">
+<a href="/LXC" class="button"><?= lxc_t('Done') ?></a>
 
 </form>
 </div>

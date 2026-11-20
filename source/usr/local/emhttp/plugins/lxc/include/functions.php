@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/i18n.php';
 require_once 'Container.php';
 require_once 'Settings.php';
 
@@ -168,8 +169,8 @@ function createContainer($name, $description, $distribution, $release, $startcon
   while (@ ob_end_flush());
   exec("lxc-create --name " . escapeshellarg($name) . " " . $bdev . " --template download -- --dist " . escapeshellarg($distribution) . " --release " . escapeshellarg($release) . " --arch amd64 2>&1", $output, $retval);
   if ($retval == 1) {
-    echo '<p style="color:red;">';
-    echo "ERROR, failed to create container " . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . "!<br/><br/>";
+    echo '<p class="lxc-error" style="color:red;">';
+    echo lxc_tf('ERROR, failed to create container %s!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>";
     exec('logger "LXC: error: Failed to create Container ' . $name . '"');
     foreach ($output as $error) {
       exec('logger "LXC: ' . $error . '"');
@@ -269,7 +270,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   $repositorypath = isset($repositoryurl['path']) ? explode('/', trim($repositoryurl['path'], '/')) : [];
 
   if (count($repositorypath) < 2) {
-    echo '<p style="color:red;">ERROR, invalid repository URL!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_t('ERROR, invalid repository URL!') . '</p>';
     return;
   }
 
@@ -279,7 +280,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   exec('logger "LXC: Creating container ' . $name . ' from repository: ' . $repository . '"');
 
   if (is_dir($default_path . "/" . $name)) {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Already exists!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Already exists!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     exec('logger "LXC: error: Failed to create Container ' . $name . ', container already exists"');
     return;
   } else {
@@ -308,14 +309,14 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
       }
     }
   } else {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Found no assets on GitHub, please try again later!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Found no assets on GitHub, please try again later!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     exec('logger "LXC: error: Failed to create Container ' . $name . ', found no assets on GitHub, please try again later"');
     rmdir($default_path . "/" . $name);
     return;
   }
 
   if (empty($download_assets)) {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Found no archive assets on GitHub!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Found no archive assets on GitHub!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     rmdir($default_path . "/" . $name);
     return;
   }
@@ -325,7 +326,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   $archivePath = $default_path . '/cache/template_cache/' . basename($download_assets[0]['filename']);
   exec('wget -q -O ' . escapeshellarg($archivePath) . ' ' . escapeshellarg($download_assets[0]['url']), $output, $retval);
   if ($retval == 1) {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Download failed!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Download failed!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     exec('logger "LXC: error: Failed to create Container ' . $name . ', download failed"');
     rmdir($default_path . "/" . $name);
     if (file_exists($archivePath)) {
@@ -336,7 +337,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
     $md5Path = $archivePath . '.md5';
     exec('wget -q -O ' . escapeshellarg($md5Path) . ' ' . escapeshellarg($download_assets[0]['url'] . '.md5'), $output, $retval);
     if ($retval == 1) {
-      echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Download from md5 failed!</p>';
+      echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Download from md5 failed!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
       exec('logger "LXC: error: Failed to create Container ' . $name . ', download from md5 failed"');
       rmdir($default_path . "/" . $name);
       if (file_exists($archivePath)) {
@@ -355,7 +356,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   $md5check = exec('cat ' . escapeshellarg($md5Path) . ' | awk \'{print $1}\'');
 
   if ($md5file != $md5check) {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>MD5 Checksum Error!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>MD5 Checksum Error!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     exec('logger "LXC: error: Failed to create Container ' . $name . ', checksum error"');
     rmdir($default_path . "/" . $name);
     if (file_exists($archivePath)) {
@@ -367,12 +368,12 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
     return;
   }
 
-  echo '<p style="color:green;">Unpacking the archive<br/><br/>---</p>';
+  echo '<p style="color:green;">' . lxc_t('Unpacking the archive') . '<br/><br/>---</p>';
   exec('logger "LXC: Unpacking archive for container ' . $name . '"');
 
   exec('tar -C ' . escapeshellarg($default_path . '/' . $name) . ' -xf ' . escapeshellarg($archivePath) . ' 2>/dev/null', $output, $retval);
   if ($retval == 1) {
-    echo '<p style="color:red;">ERROR, failed to create container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/>Extraction failed!</p>';
+    echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s<br/>Extraction failed!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>';
     exec('logger "LXC: error: Failed to create Container ' . $name . ', extraction failed"');
     rmdir($default_path . "/" . $name);
     if (file_exists($archivePath)) {
@@ -447,23 +448,23 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
       $bdevtype = "BTRFS";
     }
 
-    echo '<p style="color:green;">Converting container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ' to ' . $bdevtype . '</p>';
+    echo '<p style="color:green;">' . lxc_tf('Converting container %s to %s', htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), $bdevtype) . '</p>';
     exec('logger "LXC: Converting Container ' . $name . ' to ' . $bdevtype . '"');
 
     if ($retval == 1) {
-      echo '<p style="color:red;">ERROR, Conversion from container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '<br/> to ' . $bdevtype . ' failed!<br/><br/>---</p>';
+      echo '<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, Conversion from container %s<br/> to %s failed!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), $bdevtype) . '<br/><br/>---</p>';
       exec('logger "LXC: error: Converstion from Container ' . $name . ' to ' . $bdevtype . ' failed"');
       rmdir($default_path . "/" . $name);
       if (file_exists($archivePath)) {
         unlink($archivePath);
       }
     } else {
-      echo '<p style="color:green;">Conversion to ' . $bdevtype . ' from container ' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . ' done<br/><br/>---</p>';
+      echo '<p style="color:green;">' . lxc_tf('Conversion to %s from container %s done', $bdevtype, htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '<br/><br/>---</p>';
       exec('logger "LXC: Conversion to ' . $bdevtype . ' from Container ' . $name . ' done"');
     }
   }
 
-  echo '<p style="color:green;">You just created a container from the repository: ' . htmlspecialchars($repository, ENT_QUOTES, 'UTF-8') . '<br/>Please check out the  <a href="' . htmlspecialchars($repository, ENT_QUOTES, 'UTF-8') . '" target="_blank" rel="noopener noreferrer">README</a> from the repository for further infromation!</p>';
+  echo '<p style="color:green;">' . lxc_tf('You just created a container from the repository: %1$s<br/>Please check out the  <a href="%2$s" target="_blank" rel="noopener noreferrer">README</a> from the repository for further infromation!', htmlspecialchars($repository, ENT_QUOTES, 'UTF-8'), htmlspecialchars($repository, ENT_QUOTES, 'UTF-8')) . '</p>';
   exec('logger "LXC: Container ' . $name . ' created"');
 
   if ($startcont == "true" || $startcont == "1") {

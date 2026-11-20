@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/i18n.php';
 require_once 'Settings.php';
 require_once 'Snapshot.php';
 class Container {
@@ -283,8 +284,8 @@ class Container {
     }
     exec('lxc-destroy -s ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
     if ($retval == 1) {
-      echo '<p style="color:red;">';
-      echo "ERROR, failed to destroy " . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . "!<br/><br/>";
+      echo '<p class="lxc-error" style="color:red;">';
+      echo lxc_tf('ERROR, failed to destroy %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>";
       exec('logger "LXC: error: Failed to destroy Container ' . $this->name . '"');
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
@@ -302,7 +303,7 @@ class Container {
           exec('zfs destroy -r ' . escapeshellarg($dataset));
         }
       }
-      echo '<p>Container ' . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . ' destroyed!</p>';
+      echo '<p>' . lxc_tf('Container %s destroyed!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . '</p>';
       exec('logger "LXC: Container ' . $this->name . ' destroyed"');
     }
   }
@@ -330,8 +331,8 @@ class Container {
     $this->stopContainer();
     exec('lxc-snapshot ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
     if ($retval == 1) {
-      echo '<p style="color:red;">';
-      echo "ERROR, failed to create snapshot from " . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . "!<br/><br/>";
+      echo '<p class="lxc-error" style="color:red;">';
+      echo lxc_tf('ERROR, failed to create snapshot from %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>";
       exec('logger "LXC: error: Failed to create snapshot from Container ' . $this->name . '"');
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
@@ -348,7 +349,7 @@ class Container {
           }
         }
       }
-      echo '<p>Snapshot from container ' . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . ' created!</p>';
+      echo '<p>' . lxc_tf('Snapshot from container %s created!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . '</p>';
       exec('logger "LXC: Snapshot from container ' . $this->name. ' created"');
       if ($this->state == "RUNNING") {
         $this->startContainer();
@@ -359,15 +360,15 @@ class Container {
   function createBackup() {
     exec('lxc-autobackup ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
     if ($retval == 1) {
-      echo '<p style="color:red;">';
-      echo "ERROR, failed to create backup from " . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . "!<br/><br/>";
+      echo '<p class="lxc-error" style="color:red;">';
+      echo lxc_tf('ERROR, failed to create backup from %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>";
       exec('logger "LXC: error: Failed to create backup from Container ' . $this->name . '"');
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
         echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . "<br/>";
       }
     } else {
-      echo '<p>Backup from container ' . htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8') . ' created!</p>';
+      echo '<p>' . lxc_tf('Backup from container %s created!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . '</p>';
       exec('logger "LXC: Backup from container ' . $this->name. ' created"');
     }
   }

@@ -27,20 +27,23 @@ Cond="$var['fsState'] == 'Started' && version_compare(parse_ini_file('/etc/unrai
       SOFTWARE.
     */
 
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Container.php';
 
 $pluginname = "LXC";
 
 $container_count = count(getAllContainers());
 $active_count = count(getActiveContainers());
+$count_text = lxc_tf('Container count: %s with %s running', $container_count, $active_count);
+$lxc_settings_title = lxc_t('Go to LXC settings');
 
 $layout = LXCLayout() ;
 
 $mytiles[$pluginname]['column2'] =
 <<<EOT
 <tbody id="lxc" title="$pluginname">
-<tr><td><i class='fa fa-cubes f32'></i><div class='section'>$pluginname<span><br>Container count: $container_count with $active_count running</span><br></div>
-<a href="/Settings/LXCSettings" title="_(Go to LXC settings)_"><i class="fa fa-fw fa-cog control"></i></a></td></tr>
+<tr><td><i class='fa fa-cubes f32'></i><div class='section'>$pluginname<span><br>$count_text</span><br></div>
+<a href="/Settings/LXCSettings" title="$lxc_settings_title"><i class="fa fa-fw fa-cog control"></i></a></td></tr>
 <tr><td class="lxc-tile-content">
 $layout
 </td></tr>
@@ -54,7 +57,7 @@ function LXCLayout() {
   $page_render = '';
 
   if (count($allContainers) == 0) {
-    $page_render .= '<span id="no_lxc_containers">No LXC containers installed, please go to the plugin page to configure the plugin first!</span>';
+    $page_render .= '<span id="no_lxc_containers">' . lxc_t('No LXC containers installed, please go to the plugin page to configure the plugin first!') . '</span>';
     return $page_render;
   }
 
@@ -74,13 +77,13 @@ function LXCLayout() {
     $page_render .= '<span class="inner" style="overflow: hidden;"><span title="' . $namedescr . '">' . $namedescr . '</span><br>';
     if($container->state == "RUNNING") {
       $page_render .= '<i class="fa fa-play started green-text"></i> ';
-      $page_render .= '<span class="state">started</span></span>';
+      $page_render .= '<span class="state">' . lxc_t('started') . '</span></span>';
     } elseif($container->state == "FROZEN") {
       $page_render .= '<i class="fa fa-pause paused orange-text"></i> ';
-      $page_render .= '<span class="state">paused</span></span>';
+      $page_render .= '<span class="state">' . lxc_t('paused') . '</span></span>';
     } else {
       $page_render .= '<i class="fa fa-square stopped red-text"></i> ';
-      $page_render .= '<span class="state">stopped</span></span>';
+      $page_render .= '<span class="state">' . lxc_t('stopped') . '</span></span>';
     }
     $page_render .= '<span class="lxc-dropdown-wrapper" style="position: relative; display: inline-block;">';
     $page_render .= '<ul id="dropdown_' . $container->name .'" class="dropdown-menu dropdown-context fa-ul lxc-dropdown">';
@@ -103,30 +106,30 @@ function LXCLayout() {
           $page_render .= '<li><a class="localURL" target="_blank" href="' . $container->lxcwebui . '"><i class="fa fa-fw fa-globe fa-lg"></i> WebUI</a></li>';
         }
       }
-      $page_render .= '<li><a href="#" title="Terminal" onclick="startConsole(\'' . $container->name .'\')"><i class="fa fa-fw fa-terminal fa-lg"></i>  Terminal</a></li>';
+      $page_render .= '<li><a href="#" title="' . lxc_t('Terminal') . '" onclick="startConsole(\'' . $container->name .'\')"><i class="fa fa-fw fa-terminal fa-lg"></i>  ' . lxc_t('Terminal') . '</a></li>';
       $page_render .= '<div class="divider"></div>';
-      $page_render .= '<li><a href="#" class="stopCONT" id="' . $container->name .'"><i class="fa fa-fw fa-stop fa-lg"></i>  Stop</a></li>';
-      $page_render .= '<li><a href="#" class="restartCONT" id="' . $container->name .'"><i class="fa fa-fw fa-refresh fa-lg"></i>  Restart</a></li>';
-      $page_render .= '<li><a href="#" class="freezeCONT" id="' . $container->name .'"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  Freeze</a></li>';
-      $page_render .= '<li><a href="#" class="killCONT" id="' . $container->name .'"><i class="fa fa-fw fa-times fa-lg"></i>  Kill</a></li>';
+      $page_render .= '<li><a href="#" class="stopCONT" id="' . $container->name .'"><i class="fa fa-fw fa-stop fa-lg"></i>  ' . lxc_t('Stop') . '</a></li>';
+      $page_render .= '<li><a href="#" class="restartCONT" id="' . $container->name .'"><i class="fa fa-fw fa-refresh fa-lg"></i>  ' . lxc_t('Restart') . '</a></li>';
+      $page_render .= '<li><a href="#" class="freezeCONT" id="' . $container->name .'"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  ' . lxc_t('Freeze') . '</a></li>';
+      $page_render .= '<li><a href="#" class="killCONT" id="' . $container->name .'"><i class="fa fa-fw fa-times fa-lg"></i>  ' . lxc_t('Kill') . '</a></li>';
     } else if ($container->state =="STOPPED") {
-      $page_render .= '<li><a href="#" class="startCONT" id="' . $container->name .'"><i class="fa fa-fw fa-play fa-lg"></i>  Start</a></li>';
+      $page_render .= '<li><a href="#" class="startCONT" id="' . $container->name .'"><i class="fa fa-fw fa-play fa-lg"></i>  ' . lxc_t('Start') . '</a></li>';
     } else if ($container->state == "FROZEN") {
-      $page_render .= '<li><a href="#" class="unfreezeCONT" id="' . $container->name .'"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  Unfreeze</a></li>';
-      $page_render .= '<li><a href="#" class="killCONT" id="' . $container->name .'"><i class="fa fa-fw fa-times fa-lg"></i>  Kill</a></li>';
+      $page_render .= '<li><a href="#" class="unfreezeCONT" id="' . $container->name .'"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  ' . lxc_t('Unfreeze') . '</a></li>';
+      $page_render .= '<li><a href="#" class="killCONT" id="' . $container->name .'"><i class="fa fa-fw fa-times fa-lg"></i>  ' . lxc_t('Kill') . '</a></li>';
     }
     $page_render .= '<div class="divider"></div>';
-    $page_render .= '<li><a href="#" class="' . $container->name .'" id="dist"><i class="fa fa-fw fa-file-text-o fa-lg"></i>  Show Config</a></li>';
-    $page_render .= '<li><a href="#" class="snapshotCONT" id="' . $container->name .'"><i class="fa fa-fw fa-camera fa-lg"></i>  Create Snapshot</a></li>';
-    $page_render .= '<li><a href="/LXCCopyContainer?cont=' . $container->name .'" id="' . $container->name .'"><i class="fa fa-fw fa-clone fa-lg"></i>  Copy Container</a></li>';
+    $page_render .= '<li><a href="#" class="' . $container->name .'" id="dist"><i class="fa fa-fw fa-file-text-o fa-lg"></i>  ' . lxc_t('Show Config') . '</a></li>';
+    $page_render .= '<li><a href="#" class="snapshotCONT" id="' . $container->name .'"><i class="fa fa-fw fa-camera fa-lg"></i>  ' . lxc_t('Create Snapshot') . '</a></li>';
+    $page_render .= '<li><a href="/LXCCopyContainer?cont=' . $container->name .'" id="' . $container->name .'"><i class="fa fa-fw fa-clone fa-lg"></i>  ' . lxc_t('Copy Container') . '</a></li>';
     if ($container->description == "") {
-      $page_render .= '<li><a href="#" class="descCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  Set Description</a></li>';
+      $page_render .= '<li><a href="#" class="descCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  ' . lxc_t('Set Description') . '</a></li>';
     } else {
-      $page_render .= '<li><a href="#" class="descCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  Change Description</a></li>';
-      $page_render .= '<li><a href="#" class="descDelCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  Delete Description</a></li>';
+      $page_render .= '<li><a href="#" class="descCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  ' . lxc_t('Change Description') . '</a></li>';
+      $page_render .= '<li><a href="#" class="descDelCONT" id="' . $container->name .'"><i class="fa fa-fw fa-comment fa-lg"></i>  ' . lxc_t('Delete Description') . '</a></li>';
     }
     $page_render .= '<div class="divider"></div>';
-    $page_render .= '<li><a href="#" class="destroyCONT" id="' . $container->name .'"><i class="fa fa-fw fa-trash fa-lg"></i>  Destroy</a></li>';
+    $page_render .= '<li><a href="#" class="destroyCONT" id="' . $container->name .'"><i class="fa fa-fw fa-trash fa-lg"></i>  ' . lxc_t('Destroy') . '</a></li>';
     $page_render .= '</ul>';
     $page_render .= '</span></span>';
    }
@@ -139,4 +142,5 @@ function LXCLayout() {
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
 <link type="text/css" rel="stylesheet" href="/webGui/styles/jquery.switchbutton.css">
 <script src="/webGui/javascript/jquery.switchbutton.js"></script>
+<?= lxc_i18n_js() ?>
 <script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
