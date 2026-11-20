@@ -2,12 +2,12 @@
 <!DOCTYPE PLUGIN [
   <!ENTITY name      "lxc">
   <!ENTITY author    "moqiaoduo">
-  <!ENTITY version   "2026.11.20.0100">
+  <!ENTITY version   "2026.11.20.0125">
   <!ENTITY lxcver    "7.0.1">
   <!ENTITY launch    "Settings/LXCSettings">
   <!ENTITY gitURL    "https://github.com/&author;/unraid-&name;-plugin/raw/master">
   <!ENTITY pluginURL "&gitURL;/&name;.plg">
-  <!ENTITY md5       "8e1def0fe809ab77f584130d284098e1">
+  <!ENTITY md5       "d692c78deb7935acb38468978c48be6e">
   <!ENTITY plugin    "/boot/config/plugins/&name;">
   <!ENTITY emhttp    "/usr/local/emhttp/plugins/&name;">
 ]>
