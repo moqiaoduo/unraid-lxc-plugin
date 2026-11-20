@@ -48,7 +48,6 @@ jobs:
           echo "lxc_version=${LXC_VERSION}"       >> "$GITHUB_OUTPUT"
           echo "Plugin version: ${PLUGIN_VERSION}"
           echo "Runtime version pinned in lxc.plg: ${LXC_VERSION}"
-          if-no-files-found: error
 
   build-plugin:
     name: Build WebGUI plugin package
