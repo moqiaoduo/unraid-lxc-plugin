@@ -8,15 +8,37 @@ name: Release Plugin
 #   lxc.plg                - plugin manifest, version bumped to <date>
 
 on:
+  push:
+    branches: [master]
+    # Only what actually lands in the plugin package. A README or workflow edit
+    # does not change a single byte users install, so it should not cut a
+    # release. lxc.plg is listed because bumping lxcver (a new runtime) only
+    # reaches installed machines through a new plugin release.
+    paths:
+      - 'source/usr/local/emhttp/plugins/lxc/**'
+      - 'source/makepkg-unraid.sh'
+      - 'lxc.plg'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+# Two pushes in quick succession would otherwise run two builds that both push
+# lxc.plg to master, and the second one would race the first. Queued rather than
+# cancelled: a cancelled build must not leave a half-published release.
+concurrency:
+  group: release-plugin
+  cancel-in-progress: false
+
 jobs:
   versions:
     name: Resolve versions
     runs-on: ubuntu-latest
+    # The publish step pushes the built lxc.plg and package back to master with
+    # GITHUB_TOKEN, and GitHub does not start a new run from a GITHUB_TOKEN
+    # push. This guard is for the case where that push is made with a PAT or a
+    # person pushes a release commit by hand, which would otherwise re-trigger.
+    if: github.actor != 'github-actions[bot]'
     outputs:
       plugin_version: ${{ steps.v.outputs.plugin_version }}
       lxc_version: ${{ steps.v.outputs.lxc_version }}
