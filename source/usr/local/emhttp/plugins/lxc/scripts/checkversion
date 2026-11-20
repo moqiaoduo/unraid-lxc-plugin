@@ -1,14 +1,20 @@
 #!/bin/bash
 # get versions
-CUR_V="$(lxc-info --version 2>/dev/null)"
-LAT_V="$(wget -qO- https://api.github.com/repos/moqiaoduo/unraid-lxc-plugin/releases/latest 2>/dev/null | jq -r '.tag_name // empty' 2>/dev/null)"
-DL_BASE="https://github.com/moqiaoduo/unraid-lxc-plugin/releases/download"
+PLG="/boot/config/plugins/lxc/lxc.plg"
+CUR_V="$(lxc-start --version 2>/dev/null)"
+# The runtime version is pinned by the plugin itself (&lxcver; in lxc.plg) and
+# the .plg re-installs that pin on every boot. Resolve the pin here instead of
+# asking the plugin repo for releases/latest: its tags are plugin versions
+# (plugin-YYYY.MM.DD.NNNN), not runtime versions, and the runtime ships from a
+# separate repository.
+LAT_V="$(grep -o 'lxcver[[:space:]]*"[^"]*"' "$PLG" 2>/dev/null | head -1 | cut -d'"' -f2)"
+DL_BASE="https://github.com/moqiaoduo/unraid-lxc-runtime/releases/download"
 
 # No fallback to another repository: a release published elsewhere carries a
-# binary this plugin did not build and cannot vouch for. If GitHub is
-# unreachable the caller gets an empty LAT_V and reports it.
-if [ -z "${LAT_V}" ] || [ "${LAT_V}" = "null" ]; then
-  echo "---Cannot determine the latest LXC version from GitHub---"
+# binary this plugin did not build and cannot vouch for. If the pin cannot be
+# resolved the caller gets an empty LAT_V and reports it.
+if [ -z "${LAT_V}" ]; then
+  echo "---Cannot determine the LXC version pinned by the plugin---"
   exit 1
 fi
 
@@ -45,7 +51,7 @@ $TARGET_V"
   fi
 
   # install package
-  upgradepkg --install-new /boot/config/plugins/lxc/packages/LXC-${LAT_V}-${BUILD_IDX}.txz 2&>1 > /dev/null
+  upgradepkg --install-new /boot/config/plugins/lxc/packages/LXC-${LAT_V}-${BUILD_IDX}.txz > /dev/null 2>&1
   
   # remove old package
   rm -f $(ls /boot/config/plugins/lxc/packages/LXC-*.txz 2>/dev/null | grep -v "$LAT_V")
