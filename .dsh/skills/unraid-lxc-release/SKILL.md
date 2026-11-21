@@ -16,9 +16,20 @@ CI（`.github/workflows/release-plugin.yml`）负责构建、算 md5、把产物
 ```bash
 git status --short          # 必须为空
 git branch --show-current   # 必须是 master
-git pull --ff-only
+git fetch origin
+git rev-list --left-right --count origin/master...HEAD   # 左=远端领先，右=本地领先
 git tag --list 'plugin-*' --sort=-v:refname | head -1   # 上一个版本
 ```
+
+左边不为 0 说明远端有 CI 回写的 bot 提交（改 `<!ENTITY version>`/`md5`、往 `packages/` 放包），
+本地已分叉。**先 rebase 再继续，不要用 `git pull --ff-only`**——分叉时它直接 abort，
+误以为推送成功就是事故来源：
+
+```bash
+git rebase origin/master
+```
+
+rebase 后重新看一次上面那行计数，左边应为 0。
 
 ## 1. 定版本号
 
@@ -88,12 +99,21 @@ bash source/release-verify.sh "<version>" "${PREV#plugin-}"
 ```bash
 git add lxc.plg
 git commit -m "release: plugin <version>"
+# 打 tag 之前再对齐一次：CI 回写的 bot 提交可能在这几分钟里又落到远端
+git fetch origin
+git rebase origin/master
 git tag "plugin-<version>"
 git push origin master
 git push origin "plugin-<version>"
 ```
 
-顺序不能反：先 push master，再 push tag。tag 的 push 触发 CI。
+顺序与理由：
+
+- **先 rebase 再打 tag**：tag 一旦推上去，CI 的 verify 会检查它指向的 commit 是否在 master 上。
+  tag 打在一个没推上去的 commit 上，verify 立刻失败（且会在远端留下一次 failure 记录）。
+- **先 push master 再 push tag**：tag 的 push 触发 CI。tag 先到而 master 被拒，就是「tag 在远端、代码不在」的状态。
+- 每步用 `&&` 串联或单独检查退出码。**不要用管道把 `git push` 的失败吞掉**（`| tail` 会把非 0 退出码抹平，
+  后面带 `&&` 的步骤照跑——这正是 tag 被孤立推上去的原因）。
 
 ## 6. 确认发布
 
@@ -114,15 +134,23 @@ gh release view "plugin-<version>"
 | verify：版本没有递增 | 换一个更大的版本号，重写节标题 |
 | verify：tag 不在 master 上或有非 release 提交 | 把 tag 打到当前 master，重新 push |
 | build：打包失败 | 修代码，升版本号重发；不要复用已经 push 的 tag |
-| build 后 push master 失败（non-fast-forward） | 停下报告，让用户决定 rebase 还是手工合并 |
+| tag 已推、push master 被拒（non-fast-forward） | 按下一节抢救：删远端 tag → rebase → 重打重推。CI 那次 run 会 failure，不会产出包 |
 | release job 失败但包已构建 | `gh workflow run release-plugin.yml -f tag=plugin-<version>` 重跑 |
 
-已经 push 的 tag 不能用 `git push --force` 覆盖。要撤，先删远端 tag 再重打：
+已经 push 的 tag 不能用 `git push --force` 覆盖。要撤或要挪，按顺序来：
 
 ```bash
-git push origin ":refs/tags/plugin-<version>"
-git tag -d "plugin-<version>"
+git push origin ":refs/tags/plugin-<version>"   # 先删远端 tag，止住可能重跑的 CI
+git tag -d "plugin-<version>"                   # 再删本地
+git fetch origin
+git rebase origin/master                        # 把本地提交挪到最新的 master 上
+git tag "plugin-<version>"                      # 重打在 rebase 后的 commit 上
+git push origin master
+git push origin "plugin-<version>"
 ```
+
+删远端 tag 之前先去 `gh run list` 看一眼：如果那次 CI 已经跑完了，确认它没把错包回写到 master。
+CI 的 verify 是第一步，tag 指向的提交不在 master 上时会在构建前就失败，通常不会产出包。
 
 ## 禁止
 
@@ -130,4 +158,6 @@ git tag -d "plugin-<version>"
 - 跳过 `source/release-verify.sh` 直接打 tag。
 - 在非 master 分支发版。
 - `git push --force`。
+- 用管道接 `git push`（`| tail`、`| head`）后继续执行打 tag/推送——非 0 退出码被管道抹平，
+  后续步骤照跑，tag 会落到一个没推上去的提交上。要截断输出就用 `2>&1` 后单独检查 `$?`。
 - 在版本号未递增时发布（unRAID 会把同版本当成已是最新）。
