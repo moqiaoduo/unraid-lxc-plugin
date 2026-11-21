@@ -1,113 +1,160 @@
 name: Release Plugin
 
-# Publishes the WebGUI plugin package and its manifest. The LXC runtime is
-# built and released from moqiaoduo/unraid-lxc-runtime; its version is pinned
-# in lxc.plg, so a plugin release never has to rebuild the runtime and
-# releases/latest here only ever names the newest plugin. Assets:
-#   lxc-<date>.txz(.md5)   - WebGUI plugin package
-#   lxc.plg                - plugin manifest, version bumped to <date>
+# Publishes the WebGUI plugin package and its manifest for a version tag.
+# Cut a release by adding the new section to <CHANGES>, committing it, then
+# pushing a plugin-<version> tag; see .dsh/skills/unraid-lxc-release/SKILL.md.
+# The version lives in the tag, and the workflow refuses to build when the tag,
+# the first CHANGES section, and master disagree.
+#
+# The LXC runtime is built and released from moqiaoduo/unraid-lxc-runtime; its
+# version is pinned in lxc.plg, so a plugin release never rebuilds the runtime.
+# Assets:
+#   lxc-<version>.txz(.md5)   - WebGUI plugin package
+#   lxc.plg                   - plugin manifest, version and md5 written here
 
 on:
   push:
-    branches: [master]
-    # Only what actually lands in the plugin package. A README or workflow edit
-    # does not change a single byte users install, so it should not cut a
-    # release. lxc.plg is listed because bumping lxcver (a new runtime) only
-    # reaches installed machines through a new plugin release.
-    paths:
-      - 'source/usr/local/emhttp/plugins/lxc/**'
-      - 'source/makepkg-unraid.sh'
-      - 'lxc.plg'
+    tags:
+      - 'plugin-*'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing plugin-* tag to rebuild and republish'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
-# Two pushes in quick succession would otherwise run two builds that both push
-# lxc.plg to master, and the second one would race the first. Queued rather than
+# Two releases must not race for the same manifest push. Queued rather than
 # cancelled: a cancelled build must not leave a half-published release.
 concurrency:
   group: release-plugin
   cancel-in-progress: false
 
 jobs:
-  versions:
-    name: Resolve versions
+  verify:
+    name: Verify release tag
     runs-on: ubuntu-latest
-    # The publish step pushes the built lxc.plg and package back to master with
-    # GITHUB_TOKEN, and GitHub does not start a new run from a GITHUB_TOKEN
-    # push. This guard is for the case where that push is made with a PAT or a
-    # person pushes a release commit by hand, which would otherwise re-trigger.
-    if: github.actor != 'github-actions[bot]'
     outputs:
-      plugin_version: ${{ steps.v.outputs.plugin_version }}
+      tag: ${{ steps.v.outputs.tag }}
+      version: ${{ steps.v.outputs.version }}
       lxc_version: ${{ steps.v.outputs.lxc_version }}
     steps:
-      - name: Checkout Repository
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          fetch-depth: 0
 
-      - name: Determine versions
+      - name: Verify tag, version and CHANGES
         id: v
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          # The WebGUI plugin keeps its own date-based version so plugin updates
-          # stay monotonic. The time of day is part of it because the plugin
-          # manager compares versions with strcmp and refuses a package whose
-          # version is equal to the installed one, so two releases on the same
-          # day would otherwise be indistinguishable. HHMM is zero-padded so a
-          # plain string comparison still orders them correctly.
-          PLUGIN_VERSION="$(date -u +'%Y.%m.%d.%H%M')"
+          set -euo pipefail
 
-          # The runtime version belongs to lxc.plg, not to this workflow, but
-          # naming it in the release notes tells readers which runtime the
-          # plugin installs.
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG="${INPUT_TAG}"
+          else
+            TAG="${REF_NAME}"
+          fi
+
+          if ! [[ "${TAG}" =~ ^plugin-[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "::error::Tag '${TAG}' must look like plugin-<dot separated numbers>."
+            exit 1
+          fi
+          VERSION="${TAG#plugin-}"
+
+          # The tag has to point at what master currently serves, so the
+          # release never ships a tree that is missing later fixes. The release
+          # commit this workflow pushes afterwards is the one allowed
+          # difference; anything else means the tag is stale.
+          git fetch origin master --tags --force
+          TAG_COMMIT="$(git rev-parse "${TAG}^{commit}")"
+          MASTER="$(git rev-parse origin/master)"
+          if [ "${TAG_COMMIT}" != "${MASTER}" ]; then
+            EXTRA="$(git log --format='%s' "${TAG_COMMIT}..${MASTER}")"
+            if [ -z "${EXTRA}" ]; then
+              echo "::error::Tag ${TAG} is not on master."
+              exit 1
+            fi
+            if printf '%s\n' "${EXTRA}" | grep -qv '^release: plugin '; then
+              echo "::error::master has commits after ${TAG} that are not release commits; cut the tag from current master."
+              printf '%s\n' "${EXTRA}"
+              exit 1
+            fi
+          fi
+
+          # unRAID treats a version equal to the installed one as up to date,
+          # so the new tag must sort strictly after the previous one. The same
+          # script also requires the first CHANGES section to name this
+          # release, which is what the release skill validates before tagging.
+          PREV="$(git tag --list 'plugin-*' --sort=-v:refname | grep -Fvx "${TAG}" | head -1 || true)"
+          PREV_VERSION=""
+          if [ -n "${PREV}" ]; then
+            PREV_VERSION="${PREV#plugin-}"
+          fi
+          bash source/release-verify.sh "${VERSION}" "${PREV_VERSION}"
+
           LXC_VERSION="$(sed -nE 's/^ *<!ENTITY lxcver +"([^"]+)".*/\1/p' lxc.plg)"
           if [ -z "${LXC_VERSION}" ]; then
             echo "::error::lxc.plg has no lxcver entity"
             exit 1
           fi
 
-          echo "plugin_version=${PLUGIN_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "lxc_version=${LXC_VERSION}"       >> "$GITHUB_OUTPUT"
-          echo "Plugin version: ${PLUGIN_VERSION}"
-          echo "Runtime version pinned in lxc.plg: ${LXC_VERSION}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "lxc_version=${LXC_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Releasing ${VERSION} with LXC runtime ${LXC_VERSION}"
 
   build-plugin:
-    name: Build WebGUI plugin package
-    needs: versions
+    name: Build and publish plugin package
+    needs: verify
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
+      - name: Checkout release tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+          fetch-depth: 0
 
       - name: Build plugin package and update checksum
-        run: bash source/makepkg-unraid.sh "${{ needs.versions.outputs.plugin_version }}"
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: bash source/makepkg-unraid.sh "${VERSION}"
 
       - name: Verify artifacts
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
         run: |
-          VERSION="${{ needs.versions.outputs.plugin_version }}"
           ls -lh "dist/lxc-${VERSION}.txz" "dist/lxc-${VERSION}.txz.md5" lxc.plg
           echo "MD5: $(cat "dist/lxc-${VERSION}.txz.md5")"
           # makepkg-unraid.sh rewrites lxc.plg in place; stage the copy the
           # release publishes next to the package it names.
           cp lxc.plg dist/lxc.plg
 
-      - name: Publish manifest to master
+      - name: Publish manifest and package to master
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          LXC_VERSION: ${{ needs.verify.outputs.lxc_version }}
         run: |
           # Unraid reads the manifest from &gitURL; (raw/master/lxc.plg) and the
           # package from packages/ (its second <URL>), so both have to reach
           # master. Publishing only release assets would leave every installed
           # copy stuck on whatever version master last saw, because the
           # manifest is what carries the version and checksum.
-          VERSION="${{ needs.versions.outputs.plugin_version }}"
           cp "dist/lxc-${VERSION}.txz" "dist/lxc-${VERSION}.txz.md5" packages/
-          git add lxc.plg "packages/lxc-${VERSION}.txz" "packages/lxc-${VERSION}.txz.md5"
+          git add lxc.plg packages/
           if git diff --cached --quiet; then
             echo "Manifest on master is already current."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "release: plugin ${VERSION} for LXC ${{ needs.versions.outputs.lxc_version }}"
+          git commit -m "release: plugin ${VERSION} for LXC ${LXC_VERSION}"
           # No --force: if master moved while this job was building, the push
           # fails and the release stays invisible rather than overwriting
           # someone else's commit.
@@ -122,21 +169,37 @@ jobs:
           # the plugin package.
           name: plugin
           path: |
-            dist/lxc-${{ needs.versions.outputs.plugin_version }}.txz
-            dist/lxc-${{ needs.versions.outputs.plugin_version }}.txz.md5
+            dist/lxc-${{ needs.verify.outputs.version }}.txz
+            dist/lxc-${{ needs.verify.outputs.version }}.txz.md5
             dist/lxc.plg
           if-no-files-found: error
 
   release:
     name: Publish release
-    needs: [versions, build-plugin]
+    needs: [verify, build-plugin]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      # The release body is the same text users see in the plugin manager, so
+      # the two can never describe different changes.
+      - name: Build release notes from CHANGES
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+          LXC_VERSION: ${{ needs.verify.outputs.lxc_version }}
+        run: |
+          bash source/release-verify.sh "${VERSION}" > RELEASE_NOTES.md
+          printf '\n---\n\nInstalls LXC runtime %s, published from [moqiaoduo/unraid-lxc-runtime](https://github.com/moqiaoduo/unraid-lxc-runtime/releases/tag/%s).\n' \
+            "${LXC_VERSION}" "${LXC_VERSION}" >> RELEASE_NOTES.md
+
+      - name: Download plugin artifacts
         uses: actions/download-artifact@v4
         with:
+          name: plugin
           path: dist
-          merge-multiple: true
 
       - name: List release assets
         run: ls -lh dist
@@ -144,20 +207,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # Plugin releases carry a tag so releases/latest always names the
-          # newest plugin package. They never carry the runtime assets: those
-          # live in moqiaoduo/unraid-lxc-runtime under the version pinned in
-          # lxc.plg.
-          tag_name: plugin-${{ needs.versions.outputs.plugin_version }}
-          name: Plugin ${{ needs.versions.outputs.plugin_version }}
-          body: |
-            WebGUI plugin ${{ needs.versions.outputs.plugin_version }}.
-
-            Installs LXC runtime ${{ needs.versions.outputs.lxc_version }}, published from
-            [moqiaoduo/unraid-lxc-runtime](https://github.com/moqiaoduo/unraid-lxc-runtime/releases/tag/${{ needs.versions.outputs.lxc_version }}).
-
-            Install or upgrade from the plugin manager, or from
-            `https://raw.githubusercontent.com/moqiaoduo/unraid-lxc-plugin/master/lxc.plg`.
+          # The tag exists already; the release is what makes it public.
+          tag_name: ${{ needs.verify.outputs.tag }}
+          name: Plugin ${{ needs.verify.outputs.version }}
+          body_path: RELEASE_NOTES.md
           files: |
             dist/lxc-*.txz
             dist/lxc-*.txz.md5
