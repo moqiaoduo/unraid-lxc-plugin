@@ -77,6 +77,10 @@ function lxc_tf($text)
 function lxc_i18n_js()
 {
   $catalog = lxc_catalog();
+  $locale = lxc_locale();
+  if ($locale === '') {
+    $locale = 'en_US';
+  }
   $json = json_encode(
     $catalog,
     JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
@@ -86,6 +90,9 @@ function lxc_i18n_js()
   }
   return '<script>'
     . 'window.LXC_I18N = ' . $json . ';'
+    // The task runner is a separate process, so the language the page uses has
+    // to travel with the command line as well.
+    . 'window.LXC_LOCALE = ' . json_encode($locale) . ';'
     . 'window.LXC_T = function (s) {'
     . '  return (window.LXC_I18N && Object.prototype.hasOwnProperty.call(window.LXC_I18N, s))'
     . '    ? window.LXC_I18N[s] : s;'

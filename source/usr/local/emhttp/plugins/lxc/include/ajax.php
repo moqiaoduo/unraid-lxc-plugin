@@ -3,14 +3,6 @@ require_once 'functions.php';
 require_once 'Settings.php';
 require_once 'Container.php';
 
-function sanitizeContainerName($name) {
-  $clean = basename(trim((string)$name));
-  if (preg_match('/^[a-zA-Z0-9_.-]+$/', $clean)) {
-    return $clean;
-  }
-  return null;
-}
-
 if (isset($_POST['lxc'])) {
   $settings = new Settings();
   $action = $_POST['action'] ?? '';

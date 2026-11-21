@@ -16,6 +16,11 @@
 
 <CHANGES>
 
+###2026.11.21
+- Run container create, copy, snapshot, backup, restore and destroy operations in Unraid 7.4's shared task tray, so a long operation can be minimised, recalled from another browser tab, and aborted
+- Localise the task title and log lines to the WebGUI language
+- Fix the autostart switch on the add container page
+
 ###2026.09.17
 - Modernize plugin architecture and repository references (jaygz316)
 - Fix array stop hang: correct lxc-stop syntax error, add wait timeout loop, cleanly unmount container mounts and ZFS datasets

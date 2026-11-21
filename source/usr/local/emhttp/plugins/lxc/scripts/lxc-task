@@ -1,0 +1,269 @@
+#!/usr/bin/php -q
+<?php
+/**
+ * LXC task runner for unRAID's shared task queue.
+ *
+ * unRAID 7.4 starts long operations as queued tasks: the command named here is
+ * resolved to plugins/lxc/scripts/lxc-task and everything it publishes on the
+ * 'plugins' channel shows up in the task window, where the operation can be
+ * minimised, recalled from another tab, or aborted. Older releases reach the
+ * same script through StartCommand.php and stream the very same channel, so a
+ * single entry point serves every supported release.
+ *
+ * Arguments are hex encoded by js/lxc.js: neither whitespace nor shell
+ * metacharacters survive the trip through the task queue, and an empty
+ * argument would otherwise collapse into nothing. A single '-' stands for an
+ * empty string. unRAID appends 'nchan' to plugin tasks; it is dropped here.
+ *
+ *   lxc-task <locale> <action> [hex-arg ...]
+ */
+
+define('LXC_TASK_CLI', true);
+
+require_once dirname(__DIR__) . '/include/functions.php';
+
+/**
+ * Decode one argument produced by the plugin's JavaScript caller.
+ */
+function lxc_task_arg($value)
+{
+  if ($value === '-' || $value === null) {
+    return '';
+  }
+  $decoded = @hex2bin($value);
+  return $decoded === false ? '' : $decoded;
+}
+
+/**
+ * Decode the next $count arguments, padding missing ones with empty strings.
+ */
+function lxc_task_args($args, $count)
+{
+  $values = array();
+  for ($i = 0; $i < $count; $i++) {
+    $values[] = lxc_task_arg(isset($args[$i]) ? $args[$i] : '-');
+  }
+  return $values;
+}
+
+/**
+ * Record a fatal error and leave. The task queue recognises a standalone
+ * '_ERROR_' record even when the exit status cannot be relayed.
+ */
+function lxc_task_fail($message)
+{
+  if (getenv('LXC_TASK_DEBUG')) {
+    fwrite(STDERR, "[fail] $message\n");
+  }
+  lxc_task_line($message);
+  lxc_task_line('_ERROR_');
+  // The capture side is an nginx subrequest; a script that exits right away
+  // can complete the task before the last line reaches the log.
+  usleep(250000);
+  exit(1);
+}
+
+/**
+ * Validate a name the LXC tools accept on the command line.
+ */
+function lxc_task_name($value)
+{
+  $name = sanitizeContainerName($value);
+  if ($name === null) {
+    lxc_task_fail(lxc_t('ERROR, invalid container name!'));
+  }
+  return $name;
+}
+
+/**
+ * Validate a distribution, release or snapshot token.
+ */
+function lxc_task_token($value)
+{
+  if ($value === '' || !preg_match('/^[a-zA-Z0-9_.-]+$/', $value)) {
+    lxc_task_fail(lxc_tf('ERROR, invalid value "%s"!', $value));
+  }
+  return $value;
+}
+
+/**
+ * Validate an optional MAC address.
+ */
+function lxc_task_mac($value)
+{
+  if ($value !== '' && !preg_match('/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/', $value)) {
+    lxc_task_fail(lxc_t('ERROR, invalid MAC address!'));
+  }
+  return $value;
+}
+
+/**
+ * Path of a container's directory below the configured LXC path.
+ */
+function lxc_task_container_path($name)
+{
+  global $settings;
+  return rtrim($settings->default_path, '/') . '/' . $name;
+}
+
+/**
+ * Stop when the container an operation needs is not there.
+ */
+function lxc_task_require_container($name)
+{
+  if (!is_file(lxc_task_container_path($name) . '/config')) {
+    lxc_task_fail(lxc_tf('ERROR, container %s does not exist!', $name));
+  }
+}
+
+/**
+ * Stop when a create or copy did not leave a container behind.
+ */
+function lxc_task_require_created($name)
+{
+  if (!is_file(lxc_task_container_path($name) . '/config')) {
+    lxc_task_fail(lxc_tf('ERROR, failed to create container %s!', $name));
+  }
+}
+
+/**
+ * Stop when a destroy did not remove the container directory.
+ */
+function lxc_task_require_removed($name)
+{
+  if (is_dir(lxc_task_container_path($name))) {
+    lxc_task_fail(lxc_tf('ERROR, failed to destroy container %s!', $name));
+  }
+}
+
+/**
+ * Report success, unless the operation already reported an error through
+ * lxc_out(). Web requests never get here.
+ */
+function lxc_task_finish($message)
+{
+  if (!empty($GLOBALS['lxc_task_failed'])) {
+    lxc_task_fail(lxc_t('ERROR, the operation did not complete successfully!'));
+  }
+  lxc_task_line($message);
+  lxc_task_line('_DONE_');
+  usleep(250000);
+}
+
+/* ---- entry point ------------------------------------------------------- */
+
+$args = array_slice($argv, 1);
+if (count($args) > 0 && end($args) === 'nchan') {
+  array_pop($args);
+}
+
+$locale = lxc_task_arg(array_shift($args));
+if (preg_match('/^[A-Za-z_]{2,10}$/', $locale)) {
+  $GLOBALS['locale'] = $locale;
+}
+
+$action = (string)array_shift($args);
+$settings = new Settings();
+
+// First line goes out while the task is certainly still running, so the window
+// shows something even when the action fails immediately afterwards.
+lxc_task_line($action);
+
+switch ($action) {
+
+  case 'createCONT':
+    list($name, $description, $distribution, $release, $startcont, $autostart, $mac) = lxc_task_args($args, 7);
+    $name = lxc_task_name($name);
+    lxc_task_token($distribution);
+    lxc_task_token($release);
+    lxc_task_mac($mac);
+    createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac);
+    lxc_task_require_created($name);
+    lxc_task_finish(lxc_tf('Container %s created.', $name));
+    break;
+
+  case 'createTEMPLATE':
+    list($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink) = lxc_task_args($args, 11);
+    $name = lxc_task_name($name);
+    lxc_task_mac($mac);
+    createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink);
+    lxc_task_require_created($name);
+    lxc_task_finish(lxc_tf('Container %s created.', $name));
+    break;
+
+  case 'copyCONT':
+    list($name, $description, $container, $autostart, $mac) = lxc_task_args($args, 5);
+    $name = lxc_task_name($name);
+    $container = lxc_task_name($container);
+    lxc_task_mac($mac);
+    lxc_task_require_container($container);
+    copyContainer($name, $description, $container, $autostart, $mac);
+    lxc_task_require_created($name);
+    lxc_task_finish(lxc_tf('Container %s copied from %s.', $name, $container));
+    break;
+
+  case 'fromSnapshot':
+    list($name, $description, $container, $snapshot, $autostart, $mac) = lxc_task_args($args, 6);
+    $name = lxc_task_name($name);
+    $container = lxc_task_name($container);
+    lxc_task_token($snapshot);
+    lxc_task_mac($mac);
+    lxc_task_require_container($container);
+    createFromSnapshot($name, $description, $container, $snapshot, $autostart, $mac);
+    lxc_task_require_created($name);
+    lxc_task_finish(lxc_tf('Container %s created from snapshot %s of %s.', $name, $snapshot, $container));
+    break;
+
+  case 'fromBackup':
+    list($name, $description, $container, $backup, $autostart, $mac) = lxc_task_args($args, 6);
+    $name = lxc_task_name($name);
+    $container = lxc_task_name($container);
+    lxc_task_token($backup);
+    lxc_task_mac($mac);
+    lxc_task_require_container($container);
+    createFromBackup($name, $description, $container, $backup, $autostart, $mac);
+    lxc_task_require_created($name);
+    lxc_task_finish(lxc_tf('Container %s created from backup %s of %s.', $name, $backup, $container));
+    break;
+
+  case 'restoreSNAP':
+    list($container, $snapshot) = lxc_task_args($args, 2);
+    $container = lxc_task_name($container);
+    lxc_task_token($snapshot);
+    lxc_task_require_container($container);
+    $c = new Container($container);
+    $c->restoreSnapshot($snapshot);
+    lxc_task_finish(lxc_tf('Container %s restored from snapshot %s.', $container, $snapshot));
+    break;
+
+  case 'snapshotCONT':
+    list($container) = lxc_task_args($args, 1);
+    $container = lxc_task_name($container);
+    lxc_task_require_container($container);
+    $c = new Container($container);
+    $c->createSnapshot();
+    lxc_task_finish(lxc_tf('Snapshot from container %s created.', $container));
+    break;
+
+  case 'backupCONT':
+    list($container) = lxc_task_args($args, 1);
+    $container = lxc_task_name($container);
+    lxc_task_require_container($container);
+    $c = new Container($container);
+    $c->createBackup();
+    lxc_task_finish(lxc_tf('Backup from container %s created.', $container));
+    break;
+
+  case 'destroyCONT':
+    list($container) = lxc_task_args($args, 1);
+    $container = lxc_task_name($container);
+    lxc_task_require_container($container);
+    $c = new Container($container);
+    $c->destroyContainer();
+    lxc_task_require_removed($container);
+    lxc_task_finish(lxc_tf('Container %s destroyed.', $container));
+    break;
+
+  default:
+    lxc_task_fail(lxc_tf('ERROR, unknown task "%s"!', $action));
+}

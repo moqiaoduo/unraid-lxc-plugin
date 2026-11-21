@@ -28,6 +28,7 @@ LXC is a lightweight operating-system-level virtualization technology that allow
 - **Zero-Downtime Array Integration**:
   - Clean array stop hook ensuring all containers gracefully shut down and all container submounts / ZFS datasets unmount cleanly to prevent `device busy` errors.
   - Robust startup hook with automatic `atd` detection and detached fallback execution.
+- **Unraid 7.4 Task Tray**: Long-running container operations (create, copy, snapshot, backup, restore, destroy) run in the shared task queue, so they can be minimised to the tray, recalled from another browser tab, and aborted. Older releases keep the in-page status log.
 
 ---
 

@@ -6,6 +6,109 @@ if ( window.history.replaceState ) {
   window.history.replaceState( null, null, window.location.href );
 }
 
+// ---- unRAID 7.4 shared task queue ------------------------------------------
+//
+// 7.4 runs long operations as queued tasks: the task window can be minimised
+// to the tray, recalled from another browser tab, and aborted from there.
+// The queue resolves the command to plugins/lxc/scripts/lxc-task and appends
+// 'nchan' itself, so the command stays a bare name followed by hex arguments.
+// Older releases have no createTask(): they keep the streaming Shadowbox
+// dialog the functions below still carry.
+function lxcTaskAvailable() {
+  return typeof window.createTask === 'function' && typeof window.openPlugin === 'function';
+}
+
+// Hex encode one argument: neither whitespace nor shell metacharacters survive
+// the trip through the task queue, and an empty argument would collapse into
+// nothing. The runner reads a single '-' as an empty string.
+function lxcTaskHex(value) {
+  const text = (value === undefined || value === null) ? '' : String(value);
+  if (text === '') {
+    return '-';
+  }
+  const bytes = new TextEncoder().encode(text);
+  let hex = '';
+  for (let i = 0; i < bytes.length; i++) {
+    hex += ('0' + bytes[i].toString(16)).slice(-2);
+  }
+  return hex;
+}
+
+function lxcTaskCommand(action, args) {
+  let cmd = 'lxc-task ' + lxcTaskHex(window.LXC_LOCALE || 'en_US') + ' ' + action;
+  for (let i = 0; i < args.length; i++) {
+    cmd += ' ' + lxcTaskHex(args[i]);
+  }
+  return cmd;
+}
+
+// Start a long operation through the task queue. unRAID opens the task window;
+// once the task ends, lxcTaskFinished brings the container list up to date.
+function lxcTaskRun(action, title, args) {
+  window.openPlugin(lxcTaskCommand(action, args), title, 'lxc', 'lxcTaskFinished');
+  lxcTaskBlock();
+}
+
+// A task keeps running while the window is minimised and the page underneath
+// stays usable, so the same form could be submitted twice. Disable it until the
+// task ends; sessionStorage keeps it disabled across a refresh of that page.
+// unRAID may inject this script more than once while navigating between pages,
+// so the key is a var: a top level const would throw on the second run.
+var LXC_TASK_PENDING = 'lxcTaskPending';
+
+function lxcTaskBlock() {
+  try {
+    sessionStorage.setItem(LXC_TASK_PENDING, window.location.pathname);
+  } catch (e) {
+    // Storage can be unavailable; the disabled form still applies.
+  }
+  lxcTaskDisableForm();
+}
+
+function lxcTaskDisableForm() {
+  const form = $('form').first();
+  if (!form.length) {
+    return;
+  }
+  form.find('input[type=submit], input[type=button], button').prop('disabled', true);
+  if (!form.data('lxcTaskNotice')) {
+    form.data('lxcTaskNotice', true);
+    form.before($('<p class="lxc-task-pending"></p>').text(LXC_T('A task is still running in the background. The form stays disabled until it finishes.')));
+  }
+}
+
+function lxcTaskUnblock() {
+  try {
+    sessionStorage.removeItem(LXC_TASK_PENDING);
+  } catch (e) {
+    // Nothing to clean up when storage is unavailable.
+  }
+}
+
+$(function () {
+  try {
+    if (sessionStorage.getItem(LXC_TASK_PENDING) === window.location.pathname) {
+      lxcTaskDisableForm();
+    }
+  } catch (e) {
+    // Storage can be unavailable; the page loads normally.
+  }
+});
+
+window.lxcTaskFinished = function () {
+  lxcTaskUnblock();
+  // Give the task window a moment to show its final state before the page
+  // reloads: the container list is rendered server side, so a reload is the
+  // only way to refresh it. The finished task stays in the tray for later.
+  setTimeout(function () {
+    if (window.location.pathname === '/LXC') {
+      window.location.reload();
+    } else {
+      window.location.href = '/LXC';
+    }
+  }, 1200);
+};
+
 function postAction(name, id) {
   const validActions = [
     'stopCONT', 'restartCONT', 'freezeCONT', 'killCONT', 'unfreezeCONT',
@@ -214,6 +317,14 @@ document.addEventListener('keydown', function(event) {
 
 // Function that shows the status dialog
 function showStatus(action, id, title, text, extra) {
+  if (lxcTaskAvailable()) {
+    const args = [id];
+    if (extra && typeof extra.snapshot === 'string') {
+      args.push(extra.snapshot);
+    }
+    lxcTaskRun(action, title, args);
+    return;
+  }
   let statusInterval;
 
   Shadowbox.open({
@@ -443,6 +554,10 @@ window.addEventListener("resize", lxcReposition);
 
 // Function that creates a new container
 function createContainer(name, description, distribution, release, startcont, autostart, mac) {
+  if (lxcTaskAvailable()) {
+    lxcTaskRun('createCONT', LXC_T("Create Container"), [name, description, distribution, release, startcont, autostart, mac]);
+    return;
+  }
   let statusInterval;
 
   Shadowbox.open({
@@ -510,6 +625,10 @@ function createContainer(name, description, distribution, release, startcont, au
 
 // Function that creates a new container from the Template
 function createContainerCAApp(name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink) {
+  if (lxcTaskAvailable()) {
+    lxcTaskRun('createTEMPLATE', LXC_T("Create Container from Template"), [name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink]);
+    return;
+  }
   let statusInterval;
 
   Shadowbox.open({
@@ -578,6 +697,10 @@ function createContainerCAApp(name, description, repository, webui, icon, startc
 
 // Function that copies a container
 function createCopy(name, description, container, autostart, mac) {
+  if (lxcTaskAvailable()) {
+    lxcTaskRun('copyCONT', LXC_T("Copy Container"), [name, description, container, autostart, mac]);
+    return;
+  }
   let statusInterval;
 
   Shadowbox.open({
@@ -716,6 +839,10 @@ $(function() {
     let description = this.contDesc.value;
     let autostart = this.contAutostart.checked;
     let mac = this.contMac.value;
+    if (lxcTaskAvailable()) {
+      lxcTaskRun('fromSnapshot', LXC_T("Restoring Container from snapshot"), [name, description, container, snapshot, autostart, mac]);
+      return;
+    }
     Shadowbox.open({
       content: '<div id="dialogContent" class="logLine spacing"></div>',
       player: 'html',
@@ -779,6 +906,10 @@ $(function() {
     let description = this.contDesc.value;
     let autostart = this.contAutostart.checked;
     let mac = this.contMac.value;
+    if (lxcTaskAvailable()) {
+      lxcTaskRun('fromBackup', LXC_T("Restoring Container from backup"), [name, description, container, backup, autostart, mac]);
+      return;
+    }
     Shadowbox.open({
       content: '<div id="dialogContent" class="logLine spacing"></div>',
       player: 'html',

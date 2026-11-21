@@ -266,4 +266,5 @@ If a ethX or vhostX interface is selected the net type will be changed to maclva
   '<b>ZFS:</b> This option will show up if your Default LXC storage path: ' => '<b>ZFS：</b>当默认 LXC 存储路径：',
   ' is on a ZFS volume.<br/>It will create it\'s own dataset (' => ' 位于 ZFS 卷上时会出现此选项。<br/>它会在默认 LXC 存储路径所在的 ZFS 池上创建自己的数据集（',
   '/zfs_lxccontainers/...) on the ZFS pool where your Default LXC storage path is located for the storage from the containers and snapshots.<br/><b>Make sure that the mover does not move the files off of this dataset or to another disk!</b><br/>The contents from the dataset will be linked to the Default LXC storage path.<br/><i>Supports Copy-on-Write Images, fast Snapshots, native send/receive.</i>' => '/zfs_lxccontainers/...），用于存放容器和快照的数据。<br/><b>请确保 mover 不会把文件移出该数据集或移到其他磁盘！</b><br/>数据集中的内容会链接到默认 LXC 存储路径。<br/><i>支持写时复制镜像、快速快照、原生 send/receive。</i>',
+  'A task is still running in the background. The form stays disabled until it finishes.' => '后台仍有任务在执行，表单会保持禁用直到任务结束。',
 );
