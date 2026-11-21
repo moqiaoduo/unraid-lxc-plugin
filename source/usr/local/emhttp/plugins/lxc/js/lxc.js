@@ -1049,4 +1049,13 @@ $(function() {
 
 })
 
-$('.autostart').switchButton({labels_placement:'right', on_label:LXC_T("On"), off_label:LXC_T("Off")});
+$(function () {
+  // The script can be injected again on navigation: switching a second time
+  // would append another label pair and break the layout.
+  $('.autostart').each(function () {
+    if ($(this).data('lxcSwitchButton')) {
+      return;
+    }
+    $(this).data('lxcSwitchButton', true).switchButton({labels_placement:'right', on_label:LXC_T("On"), off_label:LXC_T("Off")});
+  });
+});

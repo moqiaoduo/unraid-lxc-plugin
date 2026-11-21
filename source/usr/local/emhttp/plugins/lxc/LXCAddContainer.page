@@ -144,7 +144,7 @@ $avail_images_json = json_encode($avail_images);
     <div class="">
       <dl>
         <dt><?= lxc_t('Autostart:') ?></dt>
-        <dd><input type="checkbox" name="contAutostart"></dd>
+        <dd><input type="checkbox" class="autostart" name="contAutostart"></dd>
       </dl>
     </div>
 
