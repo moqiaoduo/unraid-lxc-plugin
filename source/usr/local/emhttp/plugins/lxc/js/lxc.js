@@ -895,6 +895,9 @@ function lxcApplyStats(rows) {
     }
     lxcSetCell(row, 'pid', data.pid);
     lxcSetCell(row, 'uptime', data.uptime);
+    // CPUs 列没有配置 cpuset 时只有运行中才有值（亲和性从 /proc 读），
+    // 停止后回落成空，所以两种状态都用服务端的值覆盖。
+    lxcSetCell(row, 'cpus', data.cpus);
     if (data.state === 'RUNNING') {
       // 动态统计关闭时只有 Address 与 RX/TX 有值，CPU/内存列根本不渲染。
       if (window.LXC_HAS_STATS) {

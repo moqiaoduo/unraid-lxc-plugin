@@ -278,6 +278,9 @@ if (isset($_POST['action']) && $_POST['action'] == 'updateValues') {
             'state' => $container->state,
             'pid' => $container->pid,
             'uptime' => $container->uptime,
+            // 没在配置里限制 cpuset 的容器只有运行中才拿得到亲和性（读 /proc/<pid>/status），
+            // 启动后不刷新页面时这一列会一直是空的。
+            'cpus' => $container->cpus,
             'cpu_usage' => $cpu_usage,
             'memoryUse' => $memoryUse,
             'ips' => $ips,

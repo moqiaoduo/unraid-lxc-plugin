@@ -241,7 +241,7 @@ foreach ($allContainers as $container) {
         </span>
       </span>
     </td>
-    <td>
+    <td data-lxc-role="cpus">
       <?= $container->cpus;?>
     </td>
     <?php if($settings->dynamic_stats === "enabled") { ?>
