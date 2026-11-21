@@ -16,10 +16,32 @@
 
 <CHANGES>
 
-###2026.11.21
+###2026.11.21.0758
 - Run container create, copy, snapshot, backup, restore and destroy operations in Unraid 7.4's shared task tray, so a long operation can be minimised, recalled from another browser tab, and aborted
 - Localise the task title and log lines to the WebGUI language
-- Fix the autostart switch on the add container page
+- Load the i18n dictionary before the add container pages use it, so their labels are translated
+- Fix the autostart switch on the add container page and give the add pages a consistent switch style
+- Lay the autostart switches out in a row with a single label
+
+###2026.11.20.1552
+- Fall back to the locally shipped runtime package when the version pin cannot be resolved
+
+###2026.11.20.1542
+- Restore a container in place from one of its snapshots
+- Take the LXC runtime version from the plugin pin instead of the latest upstream release
+
+###2026.11.20.0847
+- Ship a plugin-local Simplified Chinese dictionary
+- Cancel a pending container menu open when the menu is closed
+- Drop the Community Applications metadata
+- Release the plugin when the plugin sources change
+
+###2026.11.20.0125
+- Continue the tree as a fork under moqiaoduo: author and repository references point at this repository
+- Download the LXC runtime from our own releases only, and open the container menu at the pointer
+- Pin the runtime version and serve it from the runtime repository; leave the runtime build to that repository
+- Rewrite the manifest entities with awk instead of sed, and drop a stray upload-artifact key from the versions job
+- Add Community Applications material for the first release
 
 ###2026.09.17
 - Modernize plugin architecture and repository references (jaygz316)
