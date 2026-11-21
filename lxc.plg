@@ -16,6 +16,9 @@
 
 <CHANGES>
 
+###2026.11.21.0908
+- Remove the in-place snapshot restore, which could destroy the container when cloning the snapshot back failed
+
 ###2026.11.21.0758
 - Run container create, copy, snapshot, backup, restore and destroy operations in Unraid 7.4's shared task tray, so a long operation can be minimised, recalled from another browser tab, and aborted
 - Localise the task title and log lines to the WebGUI language
