@@ -16,6 +16,9 @@
 
 <CHANGES>
 
+###2026.11.21.1009
+- Fill in the CPUs column after a container starts, without reloading the page
+
 ###2026.11.21.1004
 - Start, stop, restart, freeze, unfreeze and kill update the container row in place, without reloading the page
 - Creating, copying, restoring and destroying containers, and snapshot or backup operations, still reload the page because they change the list itself
