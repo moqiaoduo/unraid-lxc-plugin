@@ -3,6 +3,7 @@ Markdown="false"
 ---
 <?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
 <?= lxc_i18n_js() ?>
 <script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
@@ -151,7 +152,7 @@ $avail_images_json = json_encode($avail_images);
     <div class="">
       <dl>
         <dt><?= lxc_t('Start after creation:') ?></dt>
-        <dd><input type="checkbox" name="contStart" checked></dd>
+        <dd><input type="checkbox" class="lxc-switch" name="contStart" checked></dd>
       </dl>
     </div>
 

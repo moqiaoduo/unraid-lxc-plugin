@@ -1183,7 +1183,7 @@ $(function() {
 $(function () {
   // The script can be injected again on navigation: switching a second time
   // would append another label pair and break the layout.
-  $('.autostart').each(function () {
+  $('.autostart, .lxc-switch').each(function () {
     if ($(this).data('lxcSwitchButton')) {
       return;
     }

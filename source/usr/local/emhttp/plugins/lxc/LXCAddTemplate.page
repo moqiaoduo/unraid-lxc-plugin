@@ -145,7 +145,7 @@ $lxc = simplexml_load_file("/tmp/lxc_container_template.xml");
         <dl>
           <dt><?= lxc_t('Start after creation:') ?></dt>
           <dd>
-            <input name="contStart" type='checkbox' checked>
+            <input class='lxc-switch' name="contStart" type='checkbox' checked>
           </dd>
         </dl>
       </div>
