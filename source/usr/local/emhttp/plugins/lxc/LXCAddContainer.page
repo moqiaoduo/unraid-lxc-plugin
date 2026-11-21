@@ -145,14 +145,14 @@ $avail_images_json = json_encode($avail_images);
     <div class="">
       <dl>
         <dt><?= lxc_t('Autostart:') ?></dt>
-        <dd><input type="checkbox" class="autostart" name="contAutostart"></dd>
+        <dd class="switch-cell"><input type="checkbox" class="autostart" name="contAutostart"></dd>
       </dl>
     </div>
 
     <div class="">
       <dl>
         <dt><?= lxc_t('Start after creation:') ?></dt>
-        <dd><input type="checkbox" class="lxc-switch" name="contStart" checked></dd>
+        <dd class="switch-cell"><input type="checkbox" class="lxc-switch" name="contStart" checked></dd>
       </dl>
     </div>
 

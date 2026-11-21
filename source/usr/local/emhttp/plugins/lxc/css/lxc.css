@@ -220,3 +220,13 @@ html[data-theme="azure"] #configEditor {
     color: #333333;
     border-color: #cccccc;
 }
+
+/* unRAID lays <dd> out as a column flex container, so every child of the
+   switch (both labels and the switch itself) ends up on its own line. Lay the
+   cell out as a row instead; floats from jquery.switchbutton.css are ignored
+   inside a flex container, which is what we want here. */
+.switch-cell {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}

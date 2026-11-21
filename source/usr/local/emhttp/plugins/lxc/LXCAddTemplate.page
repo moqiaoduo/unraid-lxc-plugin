@@ -52,7 +52,7 @@ $lxc = simplexml_load_file("/tmp/lxc_container_template.xml");
       <div>
         <dl>
           <dt><?= lxc_t('Autostart:') ?></dt>
-          <dd>
+          <dd class="switch-cell">
             <?php
             if ($lxc->Autostart == "true") {
               $checked = "checked";
@@ -144,7 +144,7 @@ $lxc = simplexml_load_file("/tmp/lxc_container_template.xml");
       <div>
         <dl>
           <dt><?= lxc_t('Start after creation:') ?></dt>
-          <dd>
+          <dd class="switch-cell">
             <input class='lxc-switch' name="contStart" type='checkbox' checked>
           </dd>
         </dl>

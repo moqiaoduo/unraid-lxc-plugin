@@ -1187,6 +1187,8 @@ $(function () {
     if ($(this).data('lxcSwitchButton')) {
       return;
     }
+    // "right" renders only the active label beside the switch; the default
+    // "both" keeps both labels visible and distinguishes them by colour only.
     $(this).data('lxcSwitchButton', true).switchButton({labels_placement:'right', on_label:LXC_T("On"), off_label:LXC_T("Off")});
   });
 });
