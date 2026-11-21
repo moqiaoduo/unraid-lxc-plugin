@@ -1,6 +1,7 @@
 Title="Create LXC Container from Template"
 Markdown="false"
 ---
+<?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 <link rel="stylesheet" href="<? autov('/plugins/lxc/css/lxc.css') ?>">
 <?= lxc_i18n_js() ?>
 <link type="text/css" rel="stylesheet" href="<? autov('/webGui/styles/jquery.switchbutton.css') ?>">

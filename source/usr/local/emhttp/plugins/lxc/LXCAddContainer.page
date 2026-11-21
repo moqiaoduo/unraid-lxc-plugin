@@ -1,6 +1,7 @@
 Title="Add LXC Container"
 Markdown="false"
 ---
+<?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
 <?= lxc_i18n_js() ?>
