@@ -157,7 +157,7 @@ foreach ($allContainers as $container) {
   $containerNames[] = $container->name;
   $setcontainerMem[$container->name] = $container->setmemory;
   ?>
-  <tr>
+  <tr data-lxc-container="<?= htmlspecialchars($container->name, ENT_QUOTES) ?>" data-lxc-state="<?= htmlspecialchars($container->state, ENT_QUOTES) ?>">
     <td style='height: 60px;' class="ct-name">
       <span class="outer">
         <span class="hand">
@@ -180,39 +180,33 @@ foreach ($allContainers as $container) {
              ?>
           </font>
           <br>
-          <span style="font-size:9pt"><i class='<?php if($container->state == "RUNNING") { echo "fa fa-play started green-text"; } elseif($container->state == "FROZEN") { echo "fa fa-pause paused orange-text"; } else { echo "fa fa-square stopped red-text"; } ?>'></i> <?php if($container->state == "RUNNING") { echo lxc_t('started'); } elseif($container->state == "FROZEN") { echo lxc_t('paused'); } else { echo lxc_t('stopped'); } ?></span>
+          <span style="font-size:9pt" data-lxc-role="state"><i class='<?php if($container->state == "RUNNING") { echo "fa fa-play started green-text"; } elseif($container->state == "FROZEN") { echo "fa fa-pause paused orange-text"; } else { echo "fa fa-square stopped red-text"; } ?>'></i> <?php if($container->state == "RUNNING") { echo lxc_t('started'); } elseif($container->state == "FROZEN") { echo lxc_t('paused'); } else { echo lxc_t('stopped'); } ?></span>
           <ul id="dropdown_<?= $container->name;?>" class="dropdown-menu dropdown-context fa-ul lxc-dropdown">
-            <?php if ($container->state == "RUNNING") { ?>
-              <?php if ($container->lxcwebui !== null) {
-                  if (strpos($container->lxcwebui, "[IP]") !== false) {
-                    $ipInfo = shell_exec("lxc-info " . $container->name . " -iH");
-                    $ipInfov4 = '';
-                    $ipInfoDocker = '';
-                    $ipInfov6 = '';
-                    $ipInfov4 = shell_exec('echo "' . $ipInfo . '" | grep "\." | grep -v "172."');
-                    $ipInfoDocker = shell_exec('echo "' . $ipInfo . '" | grep -E "172."');
-                    $ipInfov6 = shell_exec('echo "' . $ipInfo . '" | grep "\:"');
-                    $ips = nl2br(trim($ipInfov4 . $ipInfoDocker . $ipInfov6));
-                    $IPfromCont = str_replace("[IP]", strtok($ips, "<br/>"), $container->lxcwebui);
-                    if (!empty($ips)) {
-                      echo "<li><a class='localURL' target='_blank' href='" . $IPfromCont . "'><i class='fa fa-fw fa-globe fa-lg'></i> " . lxc_t('WebUI') . "</a></li>";
-                    }
-                  } else {
-                    echo "<li><a class='localURL' target='_blank' href='" . $container->lxcwebui . "'><i class='fa fa-fw fa-globe fa-lg'></i> " . lxc_t('WebUI') . "</a></li>";
+            <?php if ($container->lxcwebui !== null) {
+                $webuiHref = $container->lxcwebui;
+                if (strpos($container->lxcwebui, "[IP]") !== false && $container->state == "RUNNING") {
+                  $ipInfo = shell_exec("lxc-info " . $container->name . " -iH");
+                  $ipInfov4 = '';
+                  $ipInfoDocker = '';
+                  $ipInfov6 = '';
+                  $ipInfov4 = shell_exec('echo "' . $ipInfo . '" | grep "\." | grep -v "172."');
+                  $ipInfoDocker = shell_exec('echo "' . $ipInfo . '" | grep -E "172."');
+                  $ipInfov6 = shell_exec('echo "' . $ipInfo . '" | grep "\:"');
+                  $ips = nl2br(trim($ipInfov4 . $ipInfoDocker . $ipInfov6));
+                  if (!empty($ips)) {
+                    $webuiHref = str_replace("[IP]", strtok($ips, "<br/>"), $container->lxcwebui);
                   }
-                } ?> 
-              <li><a href="#" title="<?= lxc_t('Terminal') ?>" onclick="startConsole('<?= $container->name ?>')"><i class="fa fa-fw fa-terminal fa-lg"></i>  <?= lxc_t('Terminal') ?></a></li>
-              <div class="divider"></div>
-              <li><a href="#" class="stopCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-stop fa-lg"></i>  <?= lxc_t('Stop') ?></a></li>
-              <li><a href="#" class="restartCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-refresh fa-lg"></i>  <?= lxc_t('Restart') ?></a></li>
-              <li><a href="#" class="freezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Freeze') ?></a></li>
-              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  <?= lxc_t('Kill') ?></a></li>
-            <?php } else if ($container->state =="STOPPED") {?>
-              <li><a href="#" class="startCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-play fa-lg"></i>  <?= lxc_t('Start') ?></a></li>
-            <?php } else if ($container->state == "FROZEN") {?>
-              <li><a href="#" class="unfreezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Unfreeze') ?></a></li>
-              <li><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  <?= lxc_t('Kill') ?></a></li>
-            <?php } ?>
+                }
+                echo "<li class='lxc-when-running lxc-webui'><a class='localURL' target='_blank' href='" . $webuiHref . "' data-lxc-webui='" . $container->lxcwebui . "'><i class='fa fa-fw fa-globe fa-lg'></i> " . lxc_t('WebUI') . "</a></li>";
+              } ?>
+            <li class="lxc-when-running"><a href="#" title="<?= lxc_t('Terminal') ?>" onclick="startConsole('<?= $container->name ?>')"><i class="fa fa-fw fa-terminal fa-lg"></i>  <?= lxc_t('Terminal') ?></a></li>
+            <div class="divider lxc-when-running"></div>
+            <li class="lxc-when-running"><a href="#" class="stopCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-stop fa-lg"></i>  <?= lxc_t('Stop') ?></a></li>
+            <li class="lxc-when-running"><a href="#" class="restartCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-refresh fa-lg"></i>  <?= lxc_t('Restart') ?></a></li>
+            <li class="lxc-when-running"><a href="#" class="freezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Freeze') ?></a></li>
+            <li class="lxc-when-frozen"><a href="#" class="unfreezeCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-snowflake-o fa-lg"></i>  <?= lxc_t('Unfreeze') ?></a></li>
+            <li class="lxc-when-running lxc-when-frozen"><a href="#" class="killCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-times fa-lg"></i>  <?= lxc_t('Kill') ?></a></li>
+            <li class="lxc-when-stopped"><a href="#" class="startCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-play fa-lg"></i>  <?= lxc_t('Start') ?></a></li>
             <div class="divider"></div>
             <li><a href="#" class="<?= $container->name ?>" id="editconfig"><i class="fa fa-fw fa-file-text-o fa-lg"></i>  <?= lxc_t('Show/Edit Config') ?></a></li>
             <li><a href="#" class="snapshotCONT" id="<?= $container->name ?>"><i class="fa fa-fw fa-camera fa-lg"></i>  <?= lxc_t('Create Snapshot') ?></a></li>
@@ -251,7 +245,7 @@ foreach ($allContainers as $container) {
       <?= $container->cpus;?>
     </td>
     <?php if($settings->dynamic_stats === "enabled") { ?>
-    <td style="text-align: right;" id="<?= ($container->state == "RUNNING") ? "cpu_usage-" . $container->name : "";?>">
+    <td style="text-align: right;" data-lxc-role="cpu">
       <?php 
       if ($container->state == "RUNNING") {
         echo "<i class='fa fa-refresh fa-spin'>";
@@ -261,17 +255,17 @@ foreach ($allContainers as $container) {
       }
       ?>
     </td>
-    <td id="<?= ($container->state == "RUNNING") ? "memoryUse-" . $container->name : "";?>">
+    <td data-lxc-role="memory">
       <?= ($container->state == "RUNNING") ? "<i class='fa fa-refresh fa-spin'>" : "";?>
     </td>
-    <td id="<?= ($container->state == "RUNNING") ? "ips-" . $container->name : "";?>">
+    <td data-lxc-role="ips">
       <?= ($container->state == "RUNNING") ? "<i class='fa fa-refresh fa-spin'>" : "";?>
     </td>
-    <td id="<?= ($container->state == "RUNNING") ? "totalBytes-" . $container->name : "";?>">
+    <td data-lxc-role="bytes">
       <?= ($container->state == "RUNNING") ? "<i class='fa fa-refresh fa-spin'>" : "";?>
     </td>
     <?php } else {
-      echo "<td>";
+      echo "<td data-lxc-role=\"ips\">";
       if($container->state == "RUNNING") {
         $ipInfo = shell_exec("lxc-info " . $container->name . " -iH");
         if ($ipInfo !== null) {
@@ -285,13 +279,13 @@ foreach ($allContainers as $container) {
           }
         }
       echo "</td>";
-      echo "<td>";
+      echo "<td data-lxc-role=\"bytes\">";
       if($container->state == "RUNNING") {
         echo $container->totalBytes;
         }
       echo "</td>";
       } ?>
-    <td>
+    <td data-lxc-role="pid">
       <?= $container->pid;?>
     </td>
     <td>
@@ -304,7 +298,7 @@ foreach ($allContainers as $container) {
       ?>
       <input class='lxc autostart' type='checkbox' id="<?= $container->name ?>" title="<?= lxc_t('Toggle container autostart') ?>" <?= $checked ?>>
     </td>
-    <td>
+    <td data-lxc-role="uptime">
       <?= $container->uptime;?>
     </td>
   </tr>
@@ -353,32 +347,29 @@ if (count($differences) > 0) {
 }
 ?>
 
-<?php if($settings->dynamic_stats === "enabled") { ?>
+<?php if (!empty($containerNames)) { ?>
 <script>
-  var containerNames = <?= json_encode($containerNames); ?>;
-  var setMemory = <?= json_encode($setcontainerMem); ?>;
-  function updateValues() {
+  // 容器列表是 PHP 服务端渲染的：启动/停止后不再整页刷新，由这里轮询状态，
+  // 交给 lxc.js 就地更新每一行（徽章、PID、uptime、统计列）。动态统计关闭时
+  // 不发统计请求，间隔也放宽到 3 秒。
+  window.LXC_HAS_STATS = <?= $settings->dynamic_stats === "enabled" ? 'true' : 'false' ?>;
+  window.LXC_CPU_COUNT = <?= (int) trim((string)$cpu_count) ?>;
+  window.LXC_SETMEMORY = <?= json_encode($setcontainerMem); ?>;
+  var lxcPollNames = <?= json_encode(array_values($containerNames)); ?>;
+  window.lxcPoll = function () {
     $.ajax({
       url: '/plugins/lxc/include/ajax.php',
       type: 'POST',
-      data: {action: 'updateValues', containerNames: JSON.stringify(containerNames)},
-      success: function(response) {
-        var data = JSON.parse(response);
-        for (var i = 0; i < data.length; i++) {
-          if ((data[i].cpu_usage) === "na") {
-            $('#cpu_usage-' + data[i].name).html("N/A");
-          } else {
-            var cpuUsageWithCpuCount = ((data[i].cpu_usage) / <?= $cpu_count ?>);
-            $('#cpu_usage-' + data[i].name).html(cpuUsageWithCpuCount.toFixed(0) + "%");
-          }
-          $('#memoryUse-' + data[i].name).html(data[i].memoryUse + ' / ' + setMemory[data[i].name]);
-          $('#ips-' + data[i].name).html(data[i].ips);
-          $('#totalBytes-' + data[i].name).html(data[i].totalBytes);
+      data: {action: 'updateValues', containerNames: JSON.stringify(lxcPollNames)},
+      dataType: 'json',
+      success: function (rows) {
+        if (typeof window.lxcApplyStats === 'function') {
+          window.lxcApplyStats(rows);
         }
       }
     });
-  }
-  setInterval(updateValues, 2000);
+  };
+  setInterval(window.lxcPoll, window.LXC_HAS_STATS ? 2000 : 3000);
 </script>
 <?php } ?>
 

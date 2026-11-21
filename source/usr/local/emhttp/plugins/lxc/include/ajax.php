@@ -231,17 +231,58 @@ if (isset($_POST['action']) && $_POST['action'] == 'updateValues') {
         $containerNames = [];
     }
     $data = [];
+    // 一次性列出所有采集器进程：每个容器单独 pgrep 会白 fork 一次。
+    $workerProcs = (string) shell_exec("pgrep -af 'lxc_stats_worker' 2>/dev/null");
+    $seen = [];
     foreach ($containerNames as $name) {
         $cleanName = sanitizeContainerName($name);
-        if ($cleanName === null) {
+        if ($cleanName === null || isset($seen[$cleanName])) {
             continue;
         }
+        $seen[$cleanName] = true;
         $container = new Container($cleanName);
+        // 容器可能是页面打开之后才启动的：页面渲染时只为当时的运行中容器拉起
+        // 采集器，所以轮询发现新的运行中容器时补一次。
+        if ($container->state === 'RUNNING'
+            && strpos($workerProcs, 'lxc_stats_worker "' . $cleanName . '"') === false) {
+            shell_exec('/usr/local/emhttp/plugins/lxc/scripts/lxc_stats_worker "' . $cleanName . '" > /dev/null 2>/dev/null &');
+        }
         $cpu_usage = $container->cpu_usage;
         $memoryUse = $container->memoryUse;
         $ips = $container->ips;
+        // 动态统计关闭时没有采集器写地址，这里现场取一次：否则启动后的行在
+        // 免刷新更新时会留下空的 Address 列。
+        if ($ips === '' && $container->state === 'RUNNING') {
+            $rawIps = (string) shell_exec('lxc-info ' . escapeshellarg($cleanName) . ' -iH 2>/dev/null');
+            $v4 = [];
+            $docker = [];
+            $v6 = [];
+            foreach (preg_split('/\R/', trim($rawIps)) as $line) {
+                $line = trim($line);
+                if ($line === '') {
+                    continue;
+                }
+                if (strpos($line, ':') !== false) {
+                    $v6[] = $line;
+                } elseif (strpos($line, '172.') === 0) {
+                    $docker[] = $line;
+                } elseif (strpos($line, '.') !== false) {
+                    $v4[] = $line;
+                }
+            }
+            $ips = implode('<br/>', array_merge($v4, $docker, $v6));
+        }
         $totalBytes = $container->totalBytes;
-        $data[] = ['name' => $cleanName, 'cpu_usage' => $cpu_usage, 'memoryUse' => $memoryUse, 'ips' => $ips, 'totalBytes' => $totalBytes];
+        $data[] = [
+            'name' => $cleanName,
+            'state' => $container->state,
+            'pid' => $container->pid,
+            'uptime' => $container->uptime,
+            'cpu_usage' => $cpu_usage,
+            'memoryUse' => $memoryUse,
+            'ips' => $ips,
+            'totalBytes' => $totalBytes,
+        ];
     }
     echo json_encode($data);
 }

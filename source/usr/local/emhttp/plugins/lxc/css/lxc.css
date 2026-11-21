@@ -165,6 +165,25 @@ ul.lxc-dropdown.show_lxc {
 }
 
 /*
+ * 菜单项按容器状态显隐。列表行带 data-lxc-state，启动/停止之后由轮询就地
+ * 改写这个属性，菜单跟着变，不需要重建 HTML。!important 是必需的：WebGUI 的
+ * ".dropdown-menu li" 规则在本文件之后加载。
+ */
+tr[data-lxc-state="RUNNING"] .lxc-when-stopped,
+tr[data-lxc-state="RUNNING"] .lxc-when-frozen,
+tr[data-lxc-state="STOPPED"] .lxc-when-running,
+tr[data-lxc-state="STOPPED"] .lxc-when-frozen,
+tr[data-lxc-state="FROZEN"] .lxc-when-running,
+tr[data-lxc-state="FROZEN"] .lxc-when-stopped {
+    display: none !important;
+}
+
+/* 带 [IP] 的 WebUI 链接在拿到地址之前不显示，避免指向未替换的模板。 */
+li.lxc-webui-pending {
+    display: none !important;
+}
+
+/*
  * Only a positioning context, kept as a safety net: the menu is position:
  * fixed, so it does not need one. No display change here, because .outer is
  * also used by the "broken container" rows and by the dashboard tiles, where

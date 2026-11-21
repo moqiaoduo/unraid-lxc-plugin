@@ -45,6 +45,7 @@ function lxcTaskCommand(action, args) {
 // Start a long operation through the task queue. unRAID opens the task window;
 // once the task ends, lxcTaskFinished brings the container list up to date.
 function lxcTaskRun(action, title, args) {
+  window.LXC_LAST_TASK = { action: action, container: (args && args.length) ? args[0] : null };
   window.openPlugin(lxcTaskCommand(action, args), title, 'lxc', 'lxcTaskFinished');
   lxcTaskBlock();
 }
@@ -95,17 +96,42 @@ $(function () {
   }
 });
 
+// 会改变行集合（或行内快照/备份数）的操作只能整页重载；只改状态的操作
+// 结束后交给轮询同步，页面不用刷新。
+var LXC_FULL_RELOAD_ACTIONS = [
+  'createCONT', 'createTEMPLATE', 'copyCONT', 'fromSnapshot', 'fromBackup',
+  'destroyCONT', 'snapshotCONT', 'backupCONT', 'deleteSNAP', 'deleteBACKUP'
+];
+
+// 只改状态的操作（启动/停止/重启/冻结/解冻/强杀）结束后就地刷新，
+// 不再整页 reload；其它页面保持原来的跳转/刷新。
+function lxcAfterStateAction() {
+  hideSpinner();
+  if (window.location.pathname === '/LXC' && typeof window.lxcPoll === 'function') {
+    window.lxcPoll();
+    setTimeout(window.lxcPoll, 1500);
+    return;
+  }
+  parent.window.location.reload();
+}
+
 window.lxcTaskFinished = function () {
   lxcTaskUnblock();
+  var task = window.LXC_LAST_TASK || null;
+  window.LXC_LAST_TASK = null;
+  var needsReload = task && LXC_FULL_RELOAD_ACTIONS.indexOf(task.action) !== -1;
   // Give the task window a moment to show its final state before the page
-  // reloads: the container list is rendered server side, so a reload is the
-  // only way to refresh it. The finished task stays in the tray for later.
+  // reacts: reloading actions reload, everything else refreshes in place.
   setTimeout(function () {
-    if (window.location.pathname === '/LXC') {
-      window.location.reload();
-    } else {
-      window.location.href = '/LXC';
+    if (window.location.pathname !== '/LXC' || needsReload) {
+      if (window.location.pathname === '/LXC') {
+        window.location.reload();
+      } else {
+        window.location.href = '/LXC';
+      }
+      return;
     }
+    lxcAfterStateAction();
   }, 1200);
 };
 
@@ -131,7 +157,11 @@ function postAction(name, id) {
     'container': id
   };
   $.post("/plugins/lxc/include/ajax.php", postData).done(function(response){
-    parent.window.location.reload();
+    if (LXC_FULL_RELOAD_ACTIONS.indexOf(action) !== -1) {
+      parent.window.location.reload();
+    } else {
+      lxcAfterStateAction();
+    }
   });
 }
 
@@ -328,7 +358,11 @@ function showStatus(action, id, title, text) {
     player: 'html',
     title: title,
     onClose: function () {
-      location.reload();
+      if (LXC_FULL_RELOAD_ACTIONS.indexOf(action) !== -1) {
+        location.reload();
+      } else {
+        lxcAfterStateAction();
+      }
     },
     height: Math.min(screen.availHeight, 800),
     width: Math.min(screen.availWidth, 1200)
@@ -755,6 +789,142 @@ function createCopy(name, description, container, autostart, mac) {
 function showSpinner() {
   // Show spinner
   document.querySelector('.spinner').style.display = 'block';
+}
+
+function hideSpinner() {
+  const spinner = document.querySelector('.spinner');
+  if (spinner) {
+    spinner.style.display = 'none';
+  }
+}
+
+// ---- in-place container row updates ----------------------------------------
+//
+// 容器列表由 PHP 服务端渲染。启动/停止这类只改状态的操作结束后不再整页
+// 刷新，改由页面每 2-3 秒轮询一次的 updateValues 结果就地更新行：状态徽章、
+// PID、uptime、统计列，以及 WebUI 链接里的 [IP]。
+
+function lxcFindRow(name) {
+  const rows = document.querySelectorAll('tr[data-lxc-container]');
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].getAttribute('data-lxc-container') === name) {
+      return rows[i];
+    }
+  }
+  return null;
+}
+
+function lxcStateBadge(state) {
+  if (state === 'RUNNING') {
+    return '<i class="fa fa-play started green-text"></i> ' + LXC_T('started');
+  }
+  if (state === 'FROZEN') {
+    return '<i class="fa fa-pause paused orange-text"></i> ' + LXC_T('paused');
+  }
+  return '<i class="fa fa-square stopped red-text"></i> ' + LXC_T('stopped');
+}
+
+function lxcSetCell(row, role, value) {
+  const cell = row.querySelector('[data-lxc-role="' + role + '"]');
+  if (cell) {
+    cell.textContent = (value === undefined || value === null) ? '' : value;
+  }
+}
+
+function lxcClearStats(row) {
+  ['cpu', 'memory', 'ips', 'bytes'].forEach(function (role) {
+    const cell = row.querySelector('[data-lxc-role="' + role + '"]');
+    if (cell) {
+      cell.innerHTML = '';
+    }
+  });
+}
+
+// WebUI 菜单项可能是带 [IP] 的模板：容器启动后才知道地址，链接要跟着状态走。
+function lxcUpdateWebUI(row, data) {
+  const item = row.querySelector('li.lxc-webui');
+  if (!item) {
+    return;
+  }
+  const link = item.querySelector('a.localURL');
+  if (!link) {
+    return;
+  }
+  const template = link.getAttribute('data-lxc-webui');
+  if (!template || template.indexOf('[IP]') === -1) {
+    return;
+  }
+  let ip = '';
+  if (data.state === 'RUNNING' && data.ips) {
+    ip = String(data.ips).split('<br/>')[0];
+  }
+  if (ip) {
+    link.setAttribute('href', template.replace('[IP]', ip));
+    item.classList.remove('lxc-webui-pending');
+  } else {
+    item.classList.add('lxc-webui-pending');
+  }
+}
+
+function lxcApplyStats(rows) {
+  if (!Array.isArray(rows)) {
+    return;
+  }
+  rows.forEach(function (data) {
+    if (!data || !data.name) {
+      return;
+    }
+    // STARTING/STOPPING 之类的过渡态没有对应的菜单布局：跳过，等下一次轮询。
+    if (data.state !== 'RUNNING' && data.state !== 'STOPPED' && data.state !== 'FROZEN') {
+      return;
+    }
+    const row = lxcFindRow(data.name);
+    if (!row) {
+      return;
+    }
+    const previous = row.getAttribute('data-lxc-state');
+    if (previous !== data.state) {
+      row.setAttribute('data-lxc-state', data.state);
+      const badge = row.querySelector('[data-lxc-role="state"]');
+      if (badge) {
+        badge.innerHTML = lxcStateBadge(data.state);
+      }
+      if (data.state !== 'RUNNING') {
+        lxcClearStats(row);
+      }
+    }
+    lxcSetCell(row, 'pid', data.pid);
+    lxcSetCell(row, 'uptime', data.uptime);
+    if (data.state === 'RUNNING') {
+      // 动态统计关闭时只有 Address 与 RX/TX 有值，CPU/内存列根本不渲染。
+      if (window.LXC_HAS_STATS) {
+        const cpuCell = row.querySelector('[data-lxc-role="cpu"]');
+        if (cpuCell) {
+          if (data.cpu_usage === 'na') {
+            cpuCell.textContent = 'N/A';
+          } else {
+            const cores = window.LXC_CPU_COUNT || 1;
+            const value = parseFloat(data.cpu_usage);
+            cpuCell.textContent = (isNaN(value) ? 0 : value / cores).toFixed(0) + '%';
+          }
+        }
+        const memCell = row.querySelector('[data-lxc-role="memory"]');
+        if (memCell) {
+          const limit = (window.LXC_SETMEMORY || {})[data.name] || '';
+          memCell.textContent = data.memoryUse + ' / ' + limit;
+        }
+      }
+      const ipsCell = row.querySelector('[data-lxc-role="ips"]');
+      if (ipsCell) {
+        ipsCell.innerHTML = data.ips || '';
+      }
+      const bytesCell = row.querySelector('[data-lxc-role="bytes"]');
+      if (bytesCell) {
+        bytesCell.textContent = data.totalBytes || '';
+      }
+    }
+    lxcUpdateWebUI(row, data);
+  });
 }
 
 $(function() {
