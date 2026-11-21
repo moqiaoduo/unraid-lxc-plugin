@@ -226,16 +226,6 @@ switch ($action) {
     lxc_task_finish(lxc_tf('Container %s created from backup %s of %s.', $name, $backup, $container));
     break;
 
-  case 'restoreSNAP':
-    list($container, $snapshot) = lxc_task_args($args, 2);
-    $container = lxc_task_name($container);
-    lxc_task_token($snapshot);
-    lxc_task_require_container($container);
-    $c = new Container($container);
-    $c->restoreSnapshot($snapshot);
-    lxc_task_finish(lxc_tf('Container %s restored from snapshot %s.', $container, $snapshot));
-    break;
-
   case 'snapshotCONT':
     list($container) = lxc_task_args($args, 1);
     $container = lxc_task_name($container);

@@ -41,9 +41,6 @@ foreach ($allContainers as $container) { ?>
                 <a href='/LXCRestoreSnapshot?cont=<?= $container->name?>&snap=<?= $snapshot->name ?>&date=<?= $snapshot->date ?>_<?= $snapshot->time ?>' class='button'>
                   <?= lxc_t('Create Container From Snapshot') ?>
                 </a>
-                <a href="#" class="button restoreSNAP" id="<?= $container->name ?> <?= $snapshot->name ?>">
-                  <?= lxc_t('Restore This Container') ?>
-                </a>
                 <a href="#" class="button deleteSNAP" id="<?= $container->name ?> <?= $snapshot->name ?>">
                   <?= lxc_t('Delete Snapshot') ?>
                 </a>

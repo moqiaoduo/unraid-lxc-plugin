@@ -115,14 +115,6 @@ if (isset($_POST['lxc'])) {
         $container->deleteSnapshot($snapshot);
       }
       break;
-    case 'restoreSNAP':
-      $cont = sanitizeContainerName($_POST['container'] ?? '');
-      $snapshot = basename(trim((string)($_POST['snapshot'] ?? '')));
-      if ($cont !== null && preg_match('/^[a-zA-Z0-9_.-]+$/', $snapshot)) {
-        $container = new Container($cont);
-        $container->restoreSnapshot($snapshot);
-      }
-      break;
     case 'backupCONT':
       $cont = sanitizeContainerName($_POST['container'] ?? '');
       if ($cont !== null) {
