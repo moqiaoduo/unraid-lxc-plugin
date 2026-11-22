@@ -280,3 +280,56 @@ html[data-theme="azure"] #configEditor {
     min-height: 320px;
     box-sizing: border-box;
 }
+
+/* Same reservation for the template editor: Ace measures its own container, so
+   without an explicit height the editor collapses to nothing. */
+#templateEditor {
+    height: 60vh;
+    min-height: 320px;
+    box-sizing: border-box;
+    border: 1px solid var(--border-color, rgba(128, 128, 128, 0.4));
+    border-radius: 4px;
+}
+
+.lxc-template-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+/* Template overview, shown right under the template picker the way the Docker
+   add page presents a template's description. */
+.lxc-template-overview {
+    margin: 0;
+    max-width: 900px;
+    line-height: 1.6;
+}
+
+.lxc-template-overview ul {
+    margin: 0.25rem 0 0.25rem 1.25rem;
+    padding: 0;
+}
+
+/* A template's <Description> is a keyword list, shown as pills under the
+   template picker instead of prefilling the container description. */
+.lxc-template-tags {
+    display: flex;
+    /* unRAID lays <dd> out as a column; the pills belong in a row that wraps. */
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+}
+
+.lxc-template-tag {
+    display: inline-block;
+    padding: 0.05rem 0.55rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.85em;
+    line-height: 1.6;
+    white-space: nowrap;
+}

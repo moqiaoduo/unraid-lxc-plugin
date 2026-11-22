@@ -5,39 +5,103 @@ Markdown="false"
 <link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
 <link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<style>
+/* Simple view keeps only the fields needed to create a container; the rest
+   stay in the DOM (and in the POST) but are not shown. */
+#addContainer.lxc-simple-view .lxc-advanced {
+  display: none;
+}
+</style>
 <?= lxc_i18n_js() ?>
 <script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
 
 
 <?php
-require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
 $settings = new Settings();
+
+// Templates live on the flash drive. ?xmlTemplate=user:<file> mirrors the
+// Docker add page, so a bookmark or a future CA integration can open one.
+$templates = [];
+foreach ((array)@glob(lxc_template_dir() . '/*.xml') as $templateFile) {
+  $templates[] = $templateFile;
+}
+$selectedTemplate = '';
+$templatePath = '';
+$requested = isset($_GET['xmlTemplate']) ? (string)$_GET['xmlTemplate'] : '';
+if ($requested !== '') {
+  $candidate = '';
+  if (preg_match('/^user:(.+)$/', $requested, $matches)) {
+    $candidate = lxc_template_dir() . '/' . basename($matches[1]);
+  } elseif (preg_match('#^/tmp/[^/]+$#', $requested) || preg_match('#^/boot/config/plugins/lxc/templates/[^/]+$#', $requested)) {
+    $candidate = $requested;
+  }
+  if ($candidate !== '' && is_file($candidate)) {
+    $templatePath = $candidate;
+  }
+}
+$template = false;
+if ($templatePath !== '') {
+  $loadedTemplate = @simplexml_load_file($templatePath, 'SimpleXMLElement', LIBXML_NONET);
+  if ($loadedTemplate !== false && $loadedTemplate->getName() === 'LXC') {
+    $template = $loadedTemplate;
+    $selectedTemplate = basename($templatePath, '.xml');
+  } else {
+    $templatePath = '';
+  }
+}
+$tplName = $template !== false ? trim((string)$template->Name) : '';
+$tplDescription = $template !== false ? trim((string)$template->Description) : '';
+$tplRepository = $template !== false ? trim((string)$template->Repository) : '';
+$tplWebui = $template !== false ? trim((string)$template->WebUI) : '';
+// A template's <Description> is usually a comma separated keyword list rather
+// than a sentence, so show it as tags and keep the container description free.
+$tplTags = [];
+if ($selectedTemplate !== '' && $tplDescription !== '') {
+  foreach (preg_split('/[,;]+/', $tplDescription) as $tag) {
+    $tag = trim($tag);
+    if ($tag !== '') {
+      $tplTags[] = $tag;
+    }
+  }
+}
+$tplIcon = $template !== false ? trim((string)$template->Icon) : '';
+// Docker templates keep HTML in <Overview> bracketed as [b]…[/b] so the XML
+// stays valid; turn that back into markup and show the plain text below the
+// container name, like the Docker add page does.
+$tplOverview = $template !== false ? (string)$template->Overview : '';
+$overviewHtml = lxc_template_overview_html($tplOverview);
 
 $started = $var['fsState'] == 'Started';
 $macaddress = getNewMacAddress();
 
-if ($settings->default_cont_url === 'images.linuxcontainers.org') {
-  // Get images from linuxcontainers.org
-  downloadLXCproducts('https://images.linuxcontainers.org/meta/simplestreams/v1/index.json');
-} else {
-  downloadLXCproducts('https://' . $settings->default_cont_url . '/meta/simplestreams/v1/index.json');
-}
-
-// Filter out only products from json
-$json_data = file_get_contents("/tmp/lxc/lxcimages.json");
-$json_data = json_decode($json_data, true);
-$json_data = json_encode($json_data['index']['images']['products']);
-$json_data = json_decode($json_data, true);
-
 $avail_images = [];
+$avail_images_json = '[]';
+$json_data = [];
+if ($template === false) {
+  if ($settings->default_cont_url === 'images.linuxcontainers.org') {
+    // Get images from linuxcontainers.org
+    downloadLXCproducts('https://images.linuxcontainers.org/meta/simplestreams/v1/index.json');
+  } else {
+    downloadLXCproducts('https://' . $settings->default_cont_url . '/meta/simplestreams/v1/index.json');
+  }
 
-foreach ($json_data as $item) {
-  list($distribution, $release, $architecture, $type) = explode(':', $item);  
-  $avail_images[$distribution][$release][$architecture][$type] = true;
+  // Filter out only products from json
+  $json_data = @file_get_contents('/tmp/lxc/lxcimages.json');
+  $json_data = json_decode($json_data, true);
+  if (isset($json_data['index']['images']['products'])) {
+    $json_data = json_encode($json_data['index']['images']['products']);
+    $json_data = json_decode($json_data, true);
+
+    foreach ($json_data as $item) {
+      list($distribution, $release, $architecture, $type) = explode(':', $item);
+      $avail_images[$distribution][$release][$architecture][$type] = true;
+    }
+    $avail_images_json = json_encode($avail_images);
+  } else {
+    $json_data = [];
+  }
 }
-
-$avail_images_json = json_encode($avail_images);
 $bridges = getInterfaces();
 ?>
 
@@ -46,18 +110,79 @@ $bridges = getInterfaces();
   <form id="addContainer" autocomplete="off">
     <div class="">
       <dl>
+        <dt><?= lxc_t('View:') ?></dt>
+        <dd class="switch-cell"><input type="checkbox" id="lxcAdvancedView"></dd>
+      </dl>
+    </div>
+    <div class="">
+      <dl>
+        <dt><?= lxc_t('Template:') ?></dt>
+        <dd class="inline-cell">
+          <select id="lxcTemplateSelect" name="template">
+            <option value=""><?= lxc_t('Manual configuration') ?></option>
+            <?php foreach ($templates as $templateItem): $templateName = basename($templateItem, '.xml'); ?>
+              <option value="<?= htmlspecialchars($templateName, ENT_QUOTES, 'UTF-8') ?>" <?= $templateName === $selectedTemplate ? 'selected' : '' ?>><?= htmlspecialchars($templateName, ENT_QUOTES, 'UTF-8') ?></option>
+            <?php endforeach; ?>
+            <?php if ($selectedTemplate !== '' && !in_array($templatePath, $templates, true)): ?>
+              <option value="<?= htmlspecialchars($selectedTemplate, ENT_QUOTES, 'UTF-8') ?>" selected><?= htmlspecialchars($selectedTemplate, ENT_QUOTES, 'UTF-8') ?> (<?= lxc_t('temporary') ?>)</option>
+            <?php endif; ?>
+          </select>
+          <input type="button" id="lxcImportTemplate" value="<?= lxc_t('Import…') ?>">
+          <?php if ($selectedTemplate !== ''): ?>
+            <a href="/LXC/EditLXCTemplate?template=<?= urlencode($selectedTemplate) ?>" class="button"><?= lxc_t('Edit Template') ?></a>
+            <input type="button" id="lxcDeleteTemplate" value="<?= lxc_t('Delete Template') ?>">
+          <?php endif; ?>
+        </dd>
+      </dl>
+    </div>
+
+    <?php if (!empty($tplTags)): ?>
+    <div class="">
+      <dl>
+        <dt><?= lxc_t('Tags:') ?></dt>
+        <dd class="lxc-template-tags">
+          <?php foreach ($tplTags as $tag): ?>
+            <span class="lxc-template-tag blue-text"><?= htmlspecialchars($tag, ENT_QUOTES, 'UTF-8') ?></span>
+          <?php endforeach; ?>
+        </dd>
+      </dl>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($overviewHtml !== ''): ?>
+    <div class="">
+      <dl>
+        <dt><?= lxc_t('Overview:') ?></dt>
+        <dd class="lxc-template-overview blue-text"><?= $overviewHtml ?></dd>
+      </dl>
+    </div>
+    <?php endif; ?>
+
+    <?php if ($selectedTemplate !== ''): ?>
+    <div class="lxc-advanced">
+      <dl>
+        <dt><?= lxc_t('Template file:') ?></dt>
+        <dd><code><?= htmlspecialchars($templatePath, ENT_QUOTES, 'UTF-8') ?></code></dd>
+      </dl>
+    </div>
+    <?php endif; ?>
+
+    <div class="">
+      <dl>
         <dt><?= lxc_t('Container Name:') ?></dt>
-        <dd><input type="text" name="contName" pattern="[a-zA-Z0-9][A-Za-z0-9 \-_.]{0,49}" required placeholder="DebianLXC" class="forbidSpace">
+        <dd><input type="text" name="contName" pattern="[a-zA-Z0-9][A-Za-z0-9 \-_.]{0,49}" required placeholder="DebianLXC" class="forbidSpace" value="<?= htmlspecialchars($tplName !== '' ? $tplName : '', ENT_QUOTES, 'UTF-8') ?>">
         </dd>
       </dl>
     </div>
     <div class="">
       <dl>
         <dt><?= lxc_t('Container Description:') ?></dt>
-        <dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="<?= lxc_t('Your Description or empty') ?>">
+        <dd><input type="text" name="contDesc" pattern="[A-Za-z0-9 \-_,.]{1,50}" placeholder="<?= lxc_t('Your Description or empty') ?>" value="">
         </dd>
       </dl>
     </div>
+
+<?php if ($selectedTemplate === '') { ?>
 
 <?php if (empty($json_data)) { ?>
     <div class="">
@@ -132,7 +257,31 @@ $bridges = getInterfaces();
 
 <?php } ?>
 
+<?php } // $selectedTemplate === '' ?>
+
+<?php if ($selectedTemplate !== ''): ?>
+    <div class="lxc-advanced">
+      <dl>
+        <dt><?= lxc_t('Repository:') ?></dt>
+        <dd><input type="text" name="contRepository" readonly value="<?= htmlspecialchars($tplRepository, ENT_QUOTES, 'UTF-8') ?>"></dd>
+      </dl>
+    </div>
     <div class="">
+      <dl>
+        <dt><?= lxc_t('Web UI URL:') ?></dt>
+        <dd><input type="text" name="contWebui" value="<?= htmlspecialchars($tplWebui, ENT_QUOTES, 'UTF-8') ?>"></dd>
+      </dl>
+    </div>
+<?php endif; ?>
+
+    <div class="lxc-advanced">
+      <dl>
+        <dt><?= lxc_t('Icon URL:') ?></dt>
+        <dd><input type="text" name="contIcon" placeholder="<?= lxc_t('Default distribution icon') ?>" value="<?= htmlspecialchars($selectedTemplate !== '' ? $tplIcon : '', ENT_QUOTES, 'UTF-8') ?>"></dd>
+      </dl>
+    </div>
+
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('Mac Address:') ?></dt>
         <dd style="display: grid;">
@@ -150,28 +299,28 @@ $bridges = getInterfaces();
       </dl>
     </div>
 
-    <div class="">
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('Memory Limit (MB):') ?></dt>
         <dd><input type="number" name="contMemory" min="16" step="16" placeholder="<?= lxc_t('Unlimited') ?>"></dd>
       </dl>
     </div>
 
-    <div class="">
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('CPU Cores:') ?></dt>
         <dd><input type="text" name="contCpus" placeholder="<?= lxc_t('All cores') ?>"></dd>
       </dl>
     </div>
 
-    <div class="">
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('Init Command:') ?></dt>
         <dd><input type="text" name="contInitCmd" placeholder="/sbin/init"></dd>
       </dl>
     </div>
 
-    <div class="">
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('Network Type:') ?></dt>
         <dd>
@@ -183,7 +332,7 @@ $bridges = getInterfaces();
       </dl>
     </div>
 
-    <div class="">
+    <div class="lxc-advanced">
       <dl>
         <dt><?= lxc_t('Bridge:') ?></dt>
         <dd>
@@ -209,6 +358,74 @@ $bridges = getInterfaces();
 
   </form>
 </div>
+
+<script>
+$(function () {
+  var $select = $('#lxcTemplateSelect');
+
+  // The advanced view is a display preference, not part of the container, so
+  // remember it per browser. Fields hidden here are still submitted.
+  var $form = $('#addContainer');
+  var $view = $('#lxcAdvancedView');
+  var viewKey = 'lxcAddAdvanced';
+  $view.prop('checked', localStorage.getItem(viewKey) === '1');
+  if (typeof $.fn.switchButton === 'function') {
+    $view.switchButton({labels_placement:'right', on_label: LXC_T('Advanced'), off_label: LXC_T('Simple')});
+  }
+  function applyView() {
+    var advanced = $view.prop('checked');
+    $form.toggleClass('lxc-simple-view', !advanced);
+    localStorage.setItem(viewKey, advanced ? '1' : '0');
+  }
+  $view.on('change', applyView);
+  applyView();
+
+  $select.on('change', function () {
+    var name = $(this).val();
+    location.href = name === ''
+      ? '/LXC/AddLXCContainer'
+      : '/LXC/AddLXCContainer?xmlTemplate=user:' + encodeURIComponent(name + '.xml');
+  });
+
+  $('#lxcImportTemplate').on('click', function () {
+    showPrompt(function (url) {
+      if (!url) {
+        return;
+      }
+      $.post('/plugins/lxc/include/ajax.php',
+        { lxc: '', action: 'importTemplate', source: 'url', url: url },
+        function (result) {
+          if (result.ok) {
+            location.href = '/LXC/AddLXCContainer?xmlTemplate=user:' + encodeURIComponent(result.name + '.xml');
+          } else {
+            alert(result.error || LXC_T('ERROR, failed to import the template'));
+          }
+        }, 'json');
+    }, LXC_T('Import Template'), LXC_T('Enter the https:// URL of an LXC template XML file:'), 'https://');
+  });
+
+  $('#lxcDeleteTemplate').on('click', function () {
+    var name = $select.val();
+    if (!name) {
+      return;
+    }
+    showDialog(function (confirmed) {
+      if (!confirmed) {
+        return;
+      }
+      $.post('/plugins/lxc/include/ajax.php',
+        { lxc: '', action: 'deleteTemplate', name: name },
+        function (result) {
+          if (result.ok) {
+            location.href = '/LXC/AddLXCContainer';
+          } else {
+            alert(result.error || LXC_T('ERROR, the template does not exist!'));
+          }
+        }, 'json');
+    }, LXC_TF('Delete the template %s?', name), LXC_T('Delete Template'));
+  });
+});
+</script>
 
 
 <div id="title">

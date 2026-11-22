@@ -133,7 +133,7 @@ if (isset($_POST['lxc'])) {
     case 'createCONT':
       $name = sanitizeNewContainerName($_POST['name'] ?? '');
       if ($name !== null) {
-        createContainer($name, $_POST['description'] ?? '', $_POST['distribution'] ?? '', $_POST['release'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['mac'] ?? '', $_POST['memory'] ?? '', $_POST['cpus'] ?? '', $_POST['initcmd'] ?? '', $_POST['nettype'] ?? '', $_POST['netlink'] ?? '');
+        createContainer($name, $_POST['description'] ?? '', $_POST['distribution'] ?? '', $_POST['release'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['mac'] ?? '', $_POST['memory'] ?? '', $_POST['cpus'] ?? '', $_POST['initcmd'] ?? '', $_POST['nettype'] ?? '', $_POST['netlink'] ?? '', $_POST['icon'] ?? '');
       }
       break;
     case 'copyCONT':
@@ -215,6 +215,20 @@ if (isset($_POST['lxc'])) {
       $containerObj->setDescription($single('description'));
       $containerObj->setAutostart((string)($_POST['autostart'] ?? '0') === '1' ? 1 : 0);
       $containerObj->setWebuiurl($single('webui'));
+
+      // An empty icon field means "use the distribution icon", which is the
+      // absence of custom-icons/<name>.png; a filled one replaces it.
+      $icon = $single('icon');
+      $iconTarget = rtrim($settings->default_path, '/') . '/custom-icons/' . $cont . '.png';
+      if ($icon === '') {
+        if (is_file($iconTarget)) {
+          @unlink($iconTarget);
+        }
+      } elseif (realpath($icon) !== realpath($iconTarget) && !lxc_download_icon($cont, $icon)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, failed to download the icon!')]);
+        break;
+      }
+
       if (!$running) {
         // The remaining values are consumed by lxc-start, so they may only be
         // changed while the container is stopped.
@@ -283,15 +297,13 @@ if (isset($_POST['lxc'])) {
     case 'createTEMPLATE':
       $name = sanitizeNewContainerName($_POST['name'] ?? '');
       if ($name !== null) {
-        createfromTemplate($name, $_POST['description'] ?? '', $_POST['repository'] ?? '', $_POST['webui'] ?? '', $_POST['icon'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['convertbdev'] ?? '', $_POST['mac'] ?? '', $_POST['supportlink'] ?? '', $_POST['donatelink'] ?? '');
+        createfromTemplate($name, $_POST['description'] ?? '', $_POST['repository'] ?? '', $_POST['webui'] ?? '', $_POST['icon'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['convertbdev'] ?? '', $_POST['mac'] ?? '', $_POST['supportlink'] ?? '', $_POST['donatelink'] ?? '', $_POST['memory'] ?? '', $_POST['cpus'] ?? '', $_POST['initcmd'] ?? '', $_POST['nettype'] ?? '', $_POST['netlink'] ?? '');
       }
       break;
     case 'importTemplate':
-      // Community Applications has no LXC template support, so the XML is still
-      // dropped into /tmp by hand. This endpoint copies it there from a URL or
-      // from the text the page read out of a local file.
+      // Imported templates live in the plugin directory on the flash drive, so
+      // they survive a reboot and can be picked again from the add page.
       header('Content-Type: application/json');
-      $templateFile = '/tmp/lxc_container_template.xml';
       $source = $_POST['source'] ?? '';
       $content = '';
       if ($source === 'text') {
@@ -331,12 +343,102 @@ if (isset($_POST['lxc'])) {
         echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the file is not a valid LXC template')]);
         break;
       }
+      // Fall back to the <Name> element, then to a timestamped name, so the
+      // caller does not have to invent one.
+      $templateName = lxc_template_name($_POST['name'] ?? '');
+      if ($templateName === '') {
+        $templateName = lxc_template_name((string)$imported->Name);
+      }
+      if ($templateName === '') {
+        $templateName = 'template-' . date('Ymd-His');
+      }
+      $templateDir = lxc_template_dir();
+      if (!is_dir($templateDir)) {
+        @mkdir($templateDir, 0755, true);
+      }
+      $templateFile = $templateDir . '/' . $templateName . '.xml';
+      if (file_put_contents($templateFile, $content) === false) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, failed to save the template')]);
+        break;
+      }
+      @chmod($templateFile, 0644);
+      echo json_encode(['ok' => true, 'name' => $templateName]);
+      break;
+    case 'saveTemplate':
+      // Save the text the template editor shows, keeping the same file name.
+      header('Content-Type: application/json');
+      $templateName = lxc_template_name($_POST['name'] ?? '');
+      $content = (string)($_POST['content'] ?? '');
+      if ($templateName === '') {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid template name!')]);
+        break;
+      }
+      $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+      $saved = @simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NONET);
+      if ($saved === false || $saved->getName() !== 'LXC') {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the file is not a valid LXC template')]);
+        break;
+      }
+      $templateDir = lxc_template_dir();
+      if (!is_dir($templateDir)) {
+        @mkdir($templateDir, 0755, true);
+      }
+      $templateFile = $templateDir . '/' . $templateName . '.xml';
       if (file_put_contents($templateFile, $content) === false) {
         echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, failed to save the template')]);
         break;
       }
       @chmod($templateFile, 0644);
       echo json_encode(['ok' => true]);
+      break;
+    case 'deleteTemplate':
+      header('Content-Type: application/json');
+      $templateName = lxc_template_name($_POST['name'] ?? '');
+      $templateFile = $templateName === '' ? '' : lxc_template_dir() . '/' . $templateName . '.xml';
+      if ($templateFile === '' || !is_file($templateFile)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the template does not exist!')]);
+        break;
+      }
+      @unlink($templateFile);
+      echo json_encode(['ok' => true]);
+      break;
+    case 'templateCache':
+      // Maintenance for the downloaded archives: list, delete one, or clear all.
+      header('Content-Type: application/json');
+      $cacheDir = rtrim($settings->default_path, '/') . '/cache/template_cache';
+      $operation = $_POST['op'] ?? 'list';
+      if ($operation === 'list') {
+        $files = [];
+        foreach ((array)@glob($cacheDir . '/*') as $cached) {
+          if (!is_file($cached) || !preg_match('/\.(tar\.xz|md5)$/', $cached)) {
+            continue;
+          }
+          $files[] = ['name' => basename($cached), 'size' => filesize($cached), 'mtime' => filemtime($cached)];
+        }
+        usort($files, function ($a, $b) { return $b['mtime'] <=> $a['mtime']; });
+        echo json_encode(['ok' => true, 'files' => $files]);
+        break;
+      }
+      if ($operation === 'delete') {
+        $file = basename((string)($_POST['file'] ?? ''));
+        if (!preg_match('/\.(tar\.xz|md5)$/', $file) || !is_file($cacheDir . '/' . $file)) {
+          echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the cache file does not exist!')]);
+          break;
+        }
+        @unlink($cacheDir . '/' . $file);
+        echo json_encode(['ok' => true]);
+        break;
+      }
+      if ($operation === 'clear') {
+        foreach ((array)@glob($cacheDir . '/*') as $cached) {
+          if (is_file($cached) && preg_match('/\.(tar\.xz|md5)$/', $cached)) {
+            @unlink($cached);
+          }
+        }
+        echo json_encode(['ok' => true]);
+        break;
+      }
+      echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, unknown cache operation!')]);
       break;
     default:
       break;

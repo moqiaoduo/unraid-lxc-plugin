@@ -90,9 +90,6 @@ label+.content {
   <a href="/LXC/AddLXCContainer">
     <input type="button" value="<?= lxc_t('Add Container') ?>">
   </a>
-  <a href="/LXCAddTemplate">
-    <input type="button" value="<?= lxc_t('Create from Template') ?>">
-  </a>
 <? } else { ?>
 
 <table id="lxc_table" class="tablesorter shift" style="margin-top: 0px !important;">
@@ -378,9 +375,6 @@ if (count($differences) > 0) {
 
 <a href="/LXC/AddLXCContainer">
   <input type="button" value="<?= lxc_t('Add Container') ?>">
-</a>
-<a href="/LXCAddTemplate">
-  <input type="button" value="<?= lxc_t('Create from Template') ?>">
 </a>
 <a href="#" class="startALLCONT" >
   <input type="button" value="<?= lxc_t('Start All') ?>">

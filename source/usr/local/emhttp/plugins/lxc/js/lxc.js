@@ -593,9 +593,9 @@ window.addEventListener("scroll", lxcReposition, true);
 window.addEventListener("resize", lxcReposition);
 
 // Function that creates a new container
-function createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink) {
+function createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink, icon) {
   if (lxcTaskAvailable()) {
-    lxcTaskRun('createCONT', LXC_T("Create Container"), [name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink]);
+    lxcTaskRun('createCONT', LXC_T("Create Container"), [name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink, icon]);
     return;
   }
   let statusInterval;
@@ -629,7 +629,8 @@ function createContainer(name, description, distribution, release, startcont, au
         'cpus': cpus,
         'initcmd': initcmd,
         'nettype': nettype,
-        'netlink': netlink
+        'netlink': netlink,
+        'icon': icon
       },
       xhr: function() {
         // get the native XmlHttpRequest object
@@ -669,9 +670,9 @@ function createContainer(name, description, distribution, release, startcont, au
 }
 
 // Function that creates a new container from the Template
-function createContainerCAApp(name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink) {
+function createContainerCAApp(name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink, memory, cpus, initcmd, nettype, netlink) {
   if (lxcTaskAvailable()) {
-    lxcTaskRun('createTEMPLATE', LXC_T("Create Container from Template"), [name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink]);
+    lxcTaskRun('createTEMPLATE', LXC_T("Create Container from Template"), [name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink, memory, cpus, initcmd, nettype, netlink]);
     return;
   }
   let statusInterval;
@@ -704,7 +705,12 @@ function createContainerCAApp(name, description, repository, webui, icon, startc
         'convertbdev': convertbdev,
         'mac': mac,
         'supportlink': supportlink,
-        'donatelink': donatelink
+        'donatelink': donatelink,
+        'memory': memory,
+        'cpus': cpus,
+        'initcmd': initcmd,
+        'nettype': nettype,
+        'netlink': netlink
 
       },
       xhr: function() {
@@ -1138,8 +1144,9 @@ $(function() {
       $("#emac").css('visibility', 'visible')
       return false;
     }
-    let distribution = this.contDistribution.value;
-    let release = this.contRelease.value;
+    // The distribution fields are absent in template mode, so read them defensively.
+    let distribution = this.contDistribution ? this.contDistribution.value : '';
+    let release = this.contRelease ? this.contRelease.value : '';
     let name = this.contName.value;
     let description = this.contDesc.value;
     let startcont = this.contStart.checked;
@@ -1150,8 +1157,17 @@ $(function() {
     let initcmd = this.contInitCmd.value;
     let nettype = this.contNetType.value;
     let netlink = this.contNetLink.value;
+    let icon = this.contIcon ? this.contIcon.value : '';
+    let template = this.template.value;
 
-    createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink);
+    if (template) {
+      // The template carries the rootfs; the form only supplies the per-container
+      // bits.
+      createContainerCAApp(name, description, this.contRepository.value, this.contWebui.value, this.contIcon.value, startcont, autostart, '', mac, '', '', memory, cpus, initcmd, nettype, netlink);
+      return;
+    }
+
+    createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink, icon);
   });
 
   // Listener for copying container
@@ -1306,19 +1322,25 @@ $(function() {
   // Listener for add container from CA App
   $(document).on('submit','form#addContainerCAApp',function(event){
     event.preventDefault();
-    let name = this.contName.value;
-    let description = this.contDesc.value;
-    let repository = this.contRepo.value;
-    let webui = this.contWebUI.value;
-    let icon = this.contIcon.value;
-    let startcont = this.contStart.checked;
-    let autostart = this.contAutostart.checked;
-    let convertbdev = this.contConvBDEV.checked;
-    let mac = this.contMac.value;
-    let supportlink = this.supportLink.value;
-    let donatelink = this.donateLink.value;
-
-    createContainerCAApp(name, description, repository, webui, icon, startcont, autostart, convertbdev, mac, supportlink, donatelink);
+    createContainerCAApp(
+      this.contName.value,
+      this.contDesc.value,
+      this.contRepo.value,
+      this.contWebUI.value,
+      this.contIcon.value,
+      this.contStart.checked,
+      this.contAutostart.checked,
+      this.contConvBDEV.checked,
+      this.contMac.value,
+      this.supportLink.value,
+      this.donateLink.value,
+      '',
+      '',
+      '',
+      '',
+      '',
+      this.template ? this.template.value : ''
+    );
   });
 
 })

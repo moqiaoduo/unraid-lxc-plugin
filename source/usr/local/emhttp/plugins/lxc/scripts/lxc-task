@@ -186,21 +186,21 @@ lxc_task_line($action);
 switch ($action) {
 
   case 'createCONT':
-    list($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink) = lxc_task_args($args, 12);
+    list($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink, $icon) = lxc_task_args($args, 13);
     $name = lxc_task_new_name($name);
     lxc_task_token($distribution);
     lxc_task_token($release);
     lxc_task_mac($mac);
-    createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink);
+    createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink, $icon);
     lxc_task_require_created($name);
     lxc_task_finish(lxc_tf('Container %s created.', $name));
     break;
 
   case 'createTEMPLATE':
-    list($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink) = lxc_task_args($args, 11);
+    list($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink, $memory, $cpus, $initcmd, $nettype, $netlink) = lxc_task_args($args, 16);
     $name = lxc_task_new_name($name);
     lxc_task_mac($mac);
-    createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink);
+    createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink, $memory, $cpus, $initcmd, $nettype, $netlink);
     lxc_task_require_created($name);
     lxc_task_finish(lxc_tf('Container %s created.', $name));
     break;

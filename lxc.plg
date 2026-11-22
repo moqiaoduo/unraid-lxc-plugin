@@ -667,6 +667,11 @@ if [ ! -d &plugin;/packages ]; then
   mkdir -p &plugin;/packages
 fi
 
+#Create template directory used by /LXC/AddLXCContainer?xmlTemplate=user:NAME
+if [ ! -d &plugin;/templates ]; then
+  mkdir -p &plugin;/templates
+fi
+
 #Version check, set build index depending on unRAID version
 TARGET_V="6.12.99"
 COMPARE="$(cat /etc/unraid-version | cut -d '=' -f2 | cut -d '"' -f2)

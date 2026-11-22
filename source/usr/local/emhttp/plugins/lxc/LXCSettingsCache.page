@@ -1,0 +1,101 @@
+Menu="LXCSettings:5"
+Title="缓存"
+Tag="wrench"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
+require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
+$settings = new Settings();
+$cacheDir = rtrim($settings->default_path, '/') . '/cache/template_cache';
+?>
+<link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
+<?= lxc_i18n_js() ?>
+<script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
+
+<div id="canvas">
+  <dl>
+    <dt><?= lxc_t('Cache directory:') ?></dt>
+    <dd><code><?= htmlspecialchars($cacheDir, ENT_QUOTES, 'UTF-8') ?></code></dd>
+  </dl>
+
+  <p class="inline-cell">
+    <input type="button" id="lxcClearCache" value="<?= lxc_t('Clear All') ?>">
+    <span id="lxcCacheStatus"></span>
+  </p>
+
+  <table id="lxcCacheTable" class="tablesorter" style="width: 100%;">
+    <thead>
+      <tr>
+        <th><?= lxc_t('File') ?></th>
+        <th><?= lxc_t('Size') ?></th>
+        <th><?= lxc_t('Modified') ?></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+$(function () {
+  function formatSize(bytes) {
+    if (bytes >= 1048576) {
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+    if (bytes >= 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    return bytes + ' B';
+  }
+
+  function load() {
+    $.post('/plugins/lxc/include/ajax.php', { lxc: '', action: 'templateCache', op: 'list' }, function (result) {
+      var $body = $('#lxcCacheTable tbody').empty();
+      if (!result.ok) {
+        $('#lxcCacheStatus').text(result.error || LXC_T('ERROR, failed to load the cache list'));
+        return;
+      }
+      if (!result.files.length) {
+        $body.append($('<tr>').append($('<td colspan="4">').text(LXC_T('No cached files.'))));
+        return;
+      }
+      result.files.forEach(function (file) {
+        var $row = $('<tr>');
+        $row.append($('<td>').text(file.name));
+        $row.append($('<td>').text(formatSize(file.size)));
+        $row.append($('<td>').text(new Date(file.mtime * 1000).toLocaleString()));
+        var $delete = $('<input type="button">').val(LXC_T('Delete')).on('click', function () {
+          $.post('/plugins/lxc/include/ajax.php',
+            { lxc: '', action: 'templateCache', op: 'delete', file: file.name },
+            function (answer) {
+              if (answer.ok) {
+                load();
+              } else {
+                alert(answer.error || LXC_T('ERROR, the cache file does not exist!'));
+              }
+            }, 'json');
+        });
+        $row.append($('<td>').append($delete));
+        $body.append($row);
+      });
+    }, 'json');
+  }
+
+  $('#lxcClearCache').on('click', function () {
+    showDialog(function (confirmed) {
+      if (!confirmed) {
+        return;
+      }
+      $.post('/plugins/lxc/include/ajax.php', { lxc: '', action: 'templateCache', op: 'clear' }, function (result) {
+        if (result.ok) {
+          load();
+        } else {
+          alert(result.error || LXC_T('ERROR, failed to load the cache list'));
+        }
+      }, 'json');
+    }, LXC_T('Clear all cached template downloads?'), LXC_T('Clear All'));
+  });
+
+  load();
+});
+</script>

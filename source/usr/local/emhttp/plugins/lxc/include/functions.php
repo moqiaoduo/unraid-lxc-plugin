@@ -165,6 +165,54 @@ function lxc_exec_stream($command, &$output, &$retval)
 }
 
 /**
+ * Store a container icon in <default_path>/custom-icons/<name>.png.
+ *
+ * The add page and the template flow accept an http(s) URL; the edit page
+ * prefills the current file path, so an existing local file is accepted too.
+ * Returns true when a usable icon is in place.
+ */
+function lxc_download_icon($name, $icon)
+{
+  $name = (string)$name;
+  $icon = trim((string)$icon);
+  if ($name === '' || $icon === '') {
+    return false;
+  }
+  $settings = new Settings();
+  $directory = rtrim($settings->default_path, '/') . '/custom-icons';
+  if (!is_dir($directory)) {
+    @mkdir($directory, 0755, true);
+  }
+  $target = $directory . '/' . $name . '.png';
+
+  if (preg_match('#^https?://#i', $icon)) {
+    exec('wget -q -O ' . escapeshellarg($target) . ' ' . escapeshellarg($icon), $output, $retval);
+    if ($retval != 0) {
+      @unlink($target);
+      exec('logger "LXC: error: download from icon for container ' . $name . ' failed"');
+      return false;
+    }
+    @chmod($target, 0644);
+    return true;
+  }
+
+  if (is_file($icon)) {
+    if (realpath($icon) === realpath($target)) {
+      return true;
+    }
+    if (@copy($icon, $target)) {
+      @chmod($target, 0644);
+      return true;
+    }
+    exec('logger "LXC: error: copy icon for container ' . $name . ' failed"');
+    return false;
+  }
+
+  exec('logger "LXC: error: icon for container ' . $name . ' is neither an http(s) URL nor an existing file"');
+  return false;
+}
+
+/**
  * Reduce a user supplied container name to the safe subset the LXC tools
  * accept, or to null when nothing usable is left.
  */
@@ -369,7 +417,7 @@ function getCpus(){
   return array('allcpus' => $allCpus, 'vcpus' => $vCpus);
 }
 
-function createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory = '', $cpus = '', $initcmd = '', $nettype = '', $netlink = '') {
+function createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory = '', $cpus = '', $initcmd = '', $nettype = '', $netlink = '', $icon = '') {
   $settings = new Settings();
   $default_path = rtrim($settings->default_path, '/');
   $pool = explode('/', $default_path)[2] ?? '';
@@ -452,6 +500,9 @@ function createContainer($name, $description, $distribution, $release, $startcon
   if (!empty($description) && isset($container)) {
     $container->setDescription($description);
   }
+  if (!empty($icon) && isset($container)) {
+    lxc_download_icon($name, $icon);
+  }
 }
 
 function copyContainer($name, $description, $container, $autostart, $mac) {
@@ -517,7 +568,27 @@ function downloadLXCproducts($url) {
   }
 }
 
-function createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink) {
+/**
+ * Where imported and hand-written LXC templates live. Kept on the flash drive
+ * so a template survives a reboot, unlike /tmp.
+ */
+function lxc_template_dir() {
+  return '/boot/config/plugins/lxc/templates';
+}
+
+/**
+ * Normalise a template name: drop the .xml suffix, refuse path separators and
+ * anything outside the safe set. Returns '' when the caller has to pick another
+ * name.
+ */
+function lxc_template_name($value) {
+  $name = basename(trim((string)$value));
+  $name = preg_replace('/\.xml$/i', '', $name);
+
+  return ($name !== '' && preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $name)) ? $name : '';
+}
+
+function createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink, $memory = '', $cpus = '', $initcmd = '', $nettype = '', $netlink = '') {
   $settings = new Settings();
   $default_path = rtrim($settings->default_path, '/');
   $repositoryurl = parse_url($repository);
@@ -653,6 +724,17 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   $container = new Container($name);
   $container->setMac($mac);
   $container->setAutostart(($autostart == "true" || $autostart == "1") ? 1 : 0);
+  $container->setMemoryLimit($memory === '' ? '' : ((int)$memory * 1048576));
+  $container->setCpuset($cpus);
+  $container->setInitCmd($initcmd);
+  if ($nettype !== '') {
+    $container->setNetworkType($nettype);
+  }
+  if ($nettype === 'none') {
+    $container->setNetworkLink('');
+  } elseif ($netlink !== '') {
+    $container->setNetworkLink($netlink);
+  }
 
   if (!empty($description)) {
     $container->setDescription($description);
@@ -671,16 +753,7 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
   }
 
   if (!empty($icon)) {
-    if (!is_dir($default_path . '/custom-icons')) {
-      mkdir($default_path . '/custom-icons', 0755, true);
-    }
-    exec('wget -q -O ' . escapeshellarg($default_path . '/custom-icons/' . $name . '.png') . ' ' . escapeshellarg($icon), $output, $retval);
-    if ($retval == 1) {
-      exec('logger "LXC: error: download from icon for container ' . $name . ' failed"');
-      if (file_exists($default_path . '/custom-icons/' . $name . '.png')) {
-        unlink($default_path . '/custom-icons/' . $name . '.png');
-      }
-    }
+    lxc_download_icon($name, $icon);
   }
 
   exec("sed -i '/lxc\.mount\.entry.*/d' " . escapeshellarg($default_path . "/" . $name . "/config")); 
@@ -718,10 +791,52 @@ function createfromTemplate($name, $description, $repository, $webui, $icon, $st
     }
   }
 
+
   lxc_out('<p style="color:green;">' . lxc_tf('You just created a container from the repository: %1$s<br/>Please check out the  <a href="%2$s" target="_blank" rel="noopener noreferrer">README</a> from the repository for further infromation!', htmlspecialchars($repository, ENT_QUOTES, 'UTF-8'), htmlspecialchars($repository, ENT_QUOTES, 'UTF-8')) . '</p>');
   exec('logger "LXC: Container ' . $name . ' created"');
 
   if ($startcont == "true" || $startcont == "1") {
     $container->startContainer();
   }
+}
+
+/**
+ * Render a template's <Overview> as the small HTML block the add page shows.
+ *
+ * Community Applications templates keep HTML bracketed as [b]…[/b] so the XML
+ * stays valid; turn that back into tags, drop any tag that is left, then apply
+ * the handful of markdown conventions those templates actually use (bold, code,
+ * links and bullet lists).
+ */
+function lxc_template_overview_html($text)
+{
+  $text = str_replace(["\r\n", "\r"], "\n", (string)$text);
+  $text = str_replace(['[', ']'], ['<', '>'], $text);
+  $text = strip_tags($text);
+  $text = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+
+  $text = preg_replace('/\*\*(.+?)\*\*/s', '<strong>$1</strong>', $text);
+  $text = preg_replace('/`([^`]+)`/s', '<code>$1</code>', $text);
+  $text = preg_replace(
+    '/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/',
+    '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+    $text
+  );
+
+  // Turn runs of "- item" / "* item" lines into a real list; the remaining
+  // newlines become line breaks.
+  $text = preg_replace_callback(
+    '/(?:^|\n)((?:[ \t]*[-*][ \t]+[^\n]*(?:\n|$))+)/',
+    function ($matches) {
+      $items = preg_split('/\n/', trim($matches[1]));
+      $html = '<ul>';
+      foreach ($items as $item) {
+        $html .= '<li>' . preg_replace('/^[ \t]*[-*][ \t]+/', '', $item) . '</li>';
+      }
+      return "\n" . $html . '</ul>' . "\n";
+    },
+    $text
+  );
+
+  return trim(nl2br($text));
 }
