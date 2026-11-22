@@ -286,6 +286,58 @@ if (isset($_POST['lxc'])) {
         createfromTemplate($name, $_POST['description'] ?? '', $_POST['repository'] ?? '', $_POST['webui'] ?? '', $_POST['icon'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['convertbdev'] ?? '', $_POST['mac'] ?? '', $_POST['supportlink'] ?? '', $_POST['donatelink'] ?? '');
       }
       break;
+    case 'importTemplate':
+      // Community Applications has no LXC template support, so the XML is still
+      // dropped into /tmp by hand. This endpoint copies it there from a URL or
+      // from the text the page read out of a local file.
+      header('Content-Type: application/json');
+      $templateFile = '/tmp/lxc_container_template.xml';
+      $source = $_POST['source'] ?? '';
+      $content = '';
+      if ($source === 'text') {
+        $content = (string)($_POST['content'] ?? '');
+      } elseif ($source === 'url') {
+        $url = trim((string)($_POST['url'] ?? ''));
+        $parts = $url === '' ? false : parse_url($url);
+        if ($parts === false || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])) {
+          echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the template URL must be an https:// address')]);
+          break;
+        }
+        $tmp = tempnam('/tmp', 'lxc-template-');
+        exec('curl -fsSL --max-time 20 --max-filesize 524288 -o ' . escapeshellarg($tmp) . ' ' . escapeshellarg($url) . ' 2>&1', $curlOutput, $curlStatus);
+        if ($curlStatus !== 0 || !is_file($tmp) || filesize($tmp) === 0) {
+          @unlink($tmp);
+          echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, failed to download the template')]);
+          break;
+        }
+        $content = (string)file_get_contents($tmp);
+        @unlink($tmp);
+      } else {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, unknown import source')]);
+        break;
+      }
+      if ($content === '') {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the template is empty')]);
+        break;
+      }
+      // A file picked in the browser may still carry a UTF-8 BOM.
+      $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+      if (strlen($content) > 524288) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the template is too large')]);
+        break;
+      }
+      $imported = @simplexml_load_string($content, 'SimpleXMLElement', LIBXML_NONET);
+      if ($imported === false || $imported->getName() !== 'LXC') {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, the file is not a valid LXC template')]);
+        break;
+      }
+      if (file_put_contents($templateFile, $content) === false) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, failed to save the template')]);
+        break;
+      }
+      @chmod($templateFile, 0644);
+      echo json_encode(['ok' => true]);
+      break;
     default:
       break;
   }

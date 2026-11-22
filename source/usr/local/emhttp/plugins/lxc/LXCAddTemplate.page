@@ -15,9 +15,51 @@ require_once '/usr/local/emhttp/plugins/lxc/include/functions.php';
 require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
 $settings = new Settings();
 
-$lxc = simplexml_load_file("/tmp/lxc_container_template.xml");
+// Community Applications does not offer LXC templates, so the template XML is
+// still dropped into /tmp by hand. Accept that as-is, but do not fall over on a
+// missing or malformed file: offer to import one instead.
+$templateFile = '/tmp/lxc_container_template.xml';
+$lxc = false;
+$templateError = '';
+if (is_file($templateFile)) {
+    $loaded = @simplexml_load_file($templateFile, 'SimpleXMLElement', LIBXML_NONET);
+    if ($loaded !== false && $loaded->getName() === 'LXC') {
+        $lxc = $loaded;
+    } else {
+        $templateError = lxc_t('ERROR, the file is not a valid LXC template');
+    }
+}
 ?>
 
+<?php if ($lxc === false): ?>
+<div id="lxcImportPanel">
+  <dl>
+    <dt><?= lxc_t('Template file:') ?></dt>
+    <dd><code><?= $templateFile ?></code></dd>
+  </dl>
+  <blockquote class="inline_help">
+    <p><?= lxc_t('To keep using a downloaded template, save it to /tmp/lxc_container_template.xml and reload this page:') ?></p>
+    <pre>wget -O /tmp/lxc_container_template.xml &lt;template-url&gt;</pre>
+    <?php if ($templateError !== ''): ?>
+      <p class="lxc-error"><?= htmlspecialchars($templateError, ENT_QUOTES, 'UTF-8') ?></p>
+    <?php endif; ?>
+  </blockquote>
+  <dl>
+    <dt><?= lxc_t('Import from URL:') ?></dt>
+    <dd class="inline-cell">
+      <input type="text" id="lxcImportUrl" class="forbidSpace" placeholder="https://example.com/lxc_container_template.xml">
+      <input type="button" id="lxcImportUrlButton" value="<?= lxc_t('Import') ?>">
+    </dd>
+  </dl>
+  <dl>
+    <dt><?= lxc_t('Import from file:') ?></dt>
+    <dd>
+      <input type="file" id="lxcImportFile" accept=".xml,text/xml,application/xml">
+    </dd>
+  </dl>
+  <p id="lxcImportMessage" class="lxc-error"></p>
+</div>
+<?php else: ?>
 <div>
   <form id="addContainerCAApp" autocomplete="off">
     <p />
@@ -171,5 +213,75 @@ $lxc = simplexml_load_file("/tmp/lxc_container_template.xml");
       <input type="text" name="donateLink" value="<? echo $lxc->DonateLink; ?>" hidden>
   </form>
 </div>
+<?php endif; ?>
 
 <script src="<? autov('/plugins/lxc/js/lxc.js') ?>"></script>
+<script>
+  /**
+   * Import panel shown when /tmp/lxc_container_template.xml is missing or invalid.
+   * The old workflow (wget the XML, then reload) stays untouched; this only adds
+   * a way to get the file there without opening a terminal.
+   */
+  (function () {
+    var panel = document.getElementById('lxcImportPanel');
+    if (!panel) {
+      return;
+    }
+    var url = document.getElementById('lxcImportUrl');
+    var button = document.getElementById('lxcImportUrlButton');
+    var file = document.getElementById('lxcImportFile');
+    var message = document.getElementById('lxcImportMessage');
+
+    function fail(text) {
+      message.textContent = text;
+    }
+
+    function send(data) {
+      message.textContent = '';
+      $.post('/plugins/lxc/include/ajax.php', $.extend({lxc: '', action: 'importTemplate'}, data))
+        .done(function (result) {
+          if (result && result.ok) {
+            window.location.reload();
+            return;
+          }
+          fail((result && result.error) || LXC_T('ERROR, failed to import the template'));
+        })
+        .fail(function (xhr) {
+          var text = $(xhr.responseText || '').text().trim();
+          fail(text || LXC_T('ERROR, failed to import the template'));
+        });
+    }
+
+    if (button) {
+      button.addEventListener('click', function () {
+        var value = url ? url.value.trim() : '';
+        if (!value) {
+          fail(LXC_T('Enter a template URL first.'));
+          return;
+        }
+        send({source: 'url', url: value});
+      });
+    }
+
+    if (file) {
+      file.addEventListener('change', function () {
+        var selected = file.files && file.files[0];
+        if (!selected) {
+          return;
+        }
+        if (selected.size > 524288) {
+          fail(LXC_T('ERROR, the template is too large'));
+          return;
+        }
+        var reader = new FileReader();
+        reader.onload = function () {
+          send({source: 'text', content: String(reader.result)});
+        };
+        reader.onerror = function () {
+          fail(LXC_T('ERROR, failed to read the file'));
+        };
+        reader.readAsText(selected);
+      });
+    }
+  })();
+</script>
