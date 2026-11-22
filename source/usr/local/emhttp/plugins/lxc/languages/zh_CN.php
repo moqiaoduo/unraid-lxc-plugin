@@ -276,4 +276,6 @@ If a ethX or vhostX interface is selected the net type will be changed to maclva
   'ERROR, invalid CPU list!' => '错误：CPU 列表无效！',
   'ERROR, invalid network type!' => '错误：网络类型无效！',
   'ERROR, invalid bridge name!' => '错误：桥接接口名无效！',
+  'The container is running. Only the description, Web UI and autostart can be changed.' => '容器正在运行，只能修改描述、Web UI 地址和自启动；其余项需停止容器后修改。',
+  'The container is running. Stop it before editing the configuration.' => '容器正在运行，请先停止容器再修改配置。',
 );

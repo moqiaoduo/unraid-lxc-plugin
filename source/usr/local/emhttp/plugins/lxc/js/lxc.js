@@ -168,8 +168,9 @@ function postAction(name, id) {
 function saveConfig(name) {
   const isSwal2 = (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') ||
                   (typeof swal !== 'undefined' && typeof swal.fire === 'function');
+  let swalObj = null;
   if (isSwal2) {
-    const swalObj = (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') ? Swal : swal;
+    swalObj = (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') ? Swal : swal;
     swalObj.fire({
       title: LXC_T("Saving"),
       html: LXC_TF("Saving configuration for LXC container: <span style=\"font-weight:bold\">%s</span>, please wait...", name),
@@ -204,6 +205,13 @@ function saveConfig(name) {
     },
     success: function(response) {
       location.reload();
+    },
+    error: function(xhr) {
+      if (swalObj && typeof swalObj.close === 'function') {
+        swalObj.close();
+      }
+      var message = (xhr.responseText || '').replace(/<[^>]*>/g, '').trim();
+      alert(message || LXC_T('ERROR, failed to save the configuration!'));
     },
   });
 }

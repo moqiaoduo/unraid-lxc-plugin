@@ -156,13 +156,17 @@ if (isset($_POST['lxc'])) {
       if ($container === null) {
         break;
       }
+      $containerObj = new Container($container);
+      if ($containerObj->state == "RUNNING") {
+        // LXC reads the configuration only when the container starts, so the
+        // raw editor stays read-only while it runs - same rule as the VMs.
+        http_response_code(409);
+        lxc_out('<p class="lxc-error" style="color:red;">' . lxc_t('The container is running. Stop it before editing the configuration.') . '</p>');
+        break;
+      }
       $containerConfig = rtrim($settings->default_path, '/') . "/" . $container . "/config";
       if (file_exists(dirname($containerConfig))) {
         file_put_contents($containerConfig, $updatedConfig);
-        $containerObj = new Container($container);
-        if ($containerObj->state == "RUNNING") {
-          $containerObj->restartContainer();
-        }
       }
       break;
     case 'saveSettings':
@@ -207,30 +211,30 @@ if (isset($_POST['lxc'])) {
         echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid bridge name!')]);
         break;
       }
+      $running = $containerObj->state === 'RUNNING';
       $containerObj->setDescription($single('description'));
       $containerObj->setAutostart((string)($_POST['autostart'] ?? '0') === '1' ? 1 : 0);
-      if ($mac !== '') {
-        $containerObj->setMac(strtoupper($mac));
-      }
       $containerObj->setWebuiurl($single('webui'));
-      $containerObj->setMemoryLimit($memory === '' ? '' : ((int)$memory * 1048576));
-      $containerObj->setCpuset($cpus);
-      $containerObj->setInitCmd($single('initcmd'));
-      if ($nettype !== '') {
-        $containerObj->setNetworkType($nettype);
+      if (!$running) {
+        // The remaining values are consumed by lxc-start, so they may only be
+        // changed while the container is stopped.
+        if ($mac !== '') {
+          $containerObj->setMac(strtoupper($mac));
+        }
+        $containerObj->setMemoryLimit($memory === '' ? '' : ((int)$memory * 1048576));
+        $containerObj->setCpuset($cpus);
+        $containerObj->setInitCmd($single('initcmd'));
+        if ($nettype !== '') {
+          $containerObj->setNetworkType($nettype);
+        }
+        if ($nettype === 'none') {
+          // A "none" network has no bridge to point at.
+          $containerObj->setNetworkLink('');
+        } elseif ($netlink !== '') {
+          $containerObj->setNetworkLink($netlink);
+        }
       }
-      if ($nettype === 'none') {
-        // A "none" network has no bridge to point at.
-        $containerObj->setNetworkLink('');
-      } elseif ($netlink !== '') {
-        $containerObj->setNetworkLink($netlink);
-      }
-      $restarted = false;
-      if ($containerObj->state === 'RUNNING') {
-        $containerObj->restartContainer();
-        $restarted = true;
-      }
-      echo json_encode(['ok' => true, 'restarted' => $restarted]);
+      echo json_encode(['ok' => true, 'restarted' => false]);
       break;
     case 'fromSnapshot':
       $name = sanitizeNewContainerName($_POST['name'] ?? '');
