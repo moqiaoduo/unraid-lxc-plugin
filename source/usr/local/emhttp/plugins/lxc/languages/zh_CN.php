@@ -71,6 +71,8 @@ return array(
   'Creating container %s from repository: %s<br/>Please wait until the DONE button is displayed, this can take a few minutes depending on the container size and connection speed...' => '正在从仓库 %2$s 创建容器 %1$s<br/>请等待「完成」按钮出现，耗时取决于容器大小与连接速度，可能需要几分钟…',
   'Check out the README.md from the container if further steps are necessary to configure the container!' => '如果容器还需要进一步配置，请查看容器自带的 README.md！',
   'Copying container, please wait until the DONE button is displayed!' => '正在复制容器，请等待「完成」按钮出现！',
+  'Copying container %s to %s ...' => '正在把容器 %s 复制为 %s ...',
+  'Creating container %s from snapshot %s of %s ...' => '正在从容器 %3$s 的快照 %2$s 创建容器 %1$s ...',
   'Restoring Container from snapshot' => '正在从快照恢复容器',
   'Restoring Container from backup' => '正在从备份恢复容器',
   'Restoring container %s done!' => '容器 %s 恢复完成！',
@@ -101,6 +103,10 @@ return array(
   'Off' => '关',
 
   // Status messages streamed into the progress window
+  'The operation is still running, no output for %d seconds ...' => '操作仍在运行，已 %d 秒没有输出 ...',
+  'ERROR, failed to copy container %s to %s!' => '复制容器 %1$s 到 %2$s 失败！',
+  'ERROR, failed to create container %s from snapshot %s of %s!' => '从容器 %3$s 的快照 %2$s 创建容器 %1$s 失败！',
+  'ERROR, failed to create container %s from backup %s of %s!' => '从容器 %3$s 的备份 %2$s 创建容器 %1$s 失败！',
   'ERROR, failed to create container %s!' => '创建容器 %s 失败！',
   'ERROR, failed to create container %s<br/>Already exists!' => '创建容器 %s 失败<br/>该容器已存在！',
   'ERROR, invalid repository URL!' => '仓库地址无效！',

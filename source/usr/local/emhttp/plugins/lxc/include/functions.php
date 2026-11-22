@@ -109,6 +109,10 @@ function lxc_exec_stream($command, &$output, &$retval)
 {
   $output = array();
   $retval = 1;
+  // PHP buffers the output of the request: the old Shadowbox dialog in
+  // 6.10-7.3 only fills in once this is flushed, so the log stayed empty until
+  // the command had finished even though the lines were echoed one by one.
+  while (@ob_end_flush());
   $descriptors = array(1 => array('pipe', 'w'), 2 => array('pipe', 'w'));
   $process = @proc_open($command, $descriptors, $pipes);
   if (!is_resource($process)) {
@@ -119,6 +123,11 @@ function lxc_exec_stream($command, &$output, &$retval)
   foreach ($open as $pipe) {
     stream_set_blocking($pipe, false);
   }
+  // Commands such as lxc-copy, lxc-destroy and the xz stage of a backup print
+  // nothing for minutes: one heartbeat line proves the task is still alive.
+  $beat = 60;
+  $last = time();
+  $status = null;
   while (!empty($open)) {
     $status = proc_get_status($process);
     $read = array_values($open);
@@ -149,8 +158,13 @@ function lxc_exec_stream($command, &$output, &$retval)
         lxc_out(htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . "<br/>");
       }
     }
-    if (!$received && !$status['running']) {
+    if ($received) {
+      $last = time();
+    } elseif (!$status['running']) {
       break;
+    } elseif (time() - $last >= $beat) {
+      $last = time();
+      lxc_out('<p>' . lxc_tf('The operation is still running, no output for %d seconds ...', $beat) . '</p>');
     }
   }
   foreach ($pending as $rest) {
@@ -160,7 +174,12 @@ function lxc_exec_stream($command, &$output, &$retval)
       lxc_out(htmlspecialchars($rest, ENT_QUOTES, 'UTF-8') . "<br/>");
     }
   }
-  $retval = proc_close($process);
+  // proc_get_status() caches the status and PHP 7 then returns -1 from
+  // proc_close(): take the exit code from the status when it is known and fall
+  // back to proc_close() otherwise, so callers can rely on 0 == success.
+  $closed = proc_close($process);
+  $exit = ($status !== null && !$status['running']) ? (int)$status['exitcode'] : -1;
+  $retval = ($exit >= 0) ? $exit : $closed;
   return true;
 }
 
@@ -462,9 +481,8 @@ function createContainer($name, $description, $distribution, $release, $startcon
     $bdev = "--bdev=dir";
   }
   exec('logger "LXC: Creating container ' . $name . '"');
-  while (@ ob_end_flush());
   lxc_exec_stream("lxc-create --name " . escapeshellarg($name) . " " . $bdev . " --template download -- --dist " . escapeshellarg($distribution) . " --release " . escapeshellarg($release) . " --arch amd64 2>&1", $output, $retval);
-  if ($retval == 1) {
+  if ($retval != 0) {
     lxc_out('<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>");
     exec('logger "LXC: error: Failed to create Container ' . $name . '"');
     foreach ($output as $error) {
@@ -510,14 +528,25 @@ function copyContainer($name, $description, $container, $autostart, $mac) {
   $running = $oldContainer->state;
   $oldContainer->stopContainer();
   exec('logger "LXC: Copying container ' . $container . '"');
-  exec('lxc-copy -n ' . escapeshellarg($container) . ' -N ' . escapeshellarg($name));
-  exec('logger "LXC: Container ' . $container . ' copied to ' . $name . '"');
-  $newContainer = new Container($name);
-  $newContainer->setMac($mac);
-  $newContainer->setAutostart(($autostart == "true" || $autostart == "1") ? 1 : 0);
+  // lxc-copy copies the rootfs without printing anything: announce the step so
+  // the log is not empty until the copy is done.
+  lxc_out('<p>' . lxc_tf('Copying container %s to %s ...', htmlspecialchars($container, ENT_QUOTES, 'UTF-8'), htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . '</p>');
+  lxc_exec_stream('lxc-copy -n ' . escapeshellarg($container) . ' -N ' . escapeshellarg($name), $output, $retval);
+  if ($retval != 0) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to copy container %s to %s!', htmlspecialchars($container, ENT_QUOTES, 'UTF-8'), htmlspecialchars($name, ENT_QUOTES, 'UTF-8')) . "</p>");
+    exec('logger "LXC: error: Failed to copy Container ' . $container . ' to ' . $name . '"');
+    foreach ($output as $error) {
+      exec('logger "LXC: ' . $error . '"');
+    }
+  } else {
+    exec('logger "LXC: Container ' . $container . ' copied to ' . $name . '"');
+    $newContainer = new Container($name);
+    $newContainer->setMac($mac);
+    $newContainer->setAutostart(($autostart == "true" || $autostart == "1") ? 1 : 0);
 
-  if (!empty($description)) {
-    $newContainer->setDescription($description);
+    if (!empty($description)) {
+      $newContainer->setDescription($description);
+    }
   }
 
   if ($running == "RUNNING") {
@@ -527,7 +556,18 @@ function copyContainer($name, $description, $container, $autostart, $mac) {
 
 function createFromSnapshot($name, $description, $container, $snapshot, $autostart, $mac) {
   exec('logger "LXC: Creating ' . $name . ' from container ' . $container . '-' . $snapshot . '"');
-  exec('lxc-snapshot -n ' . escapeshellarg($container) . ' -r ' . escapeshellarg($snapshot) . ' -N ' . escapeshellarg($name));
+  // lxc-snapshot -r is silent while it clones the rootfs, so publish the step
+  // ourselves; the copy can take minutes.
+  lxc_out('<p>' . lxc_tf('Creating container %s from snapshot %s of %s ...', htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), htmlspecialchars($snapshot, ENT_QUOTES, 'UTF-8'), htmlspecialchars($container, ENT_QUOTES, 'UTF-8')) . '</p>');
+  lxc_exec_stream('lxc-snapshot -n ' . escapeshellarg($container) . ' -r ' . escapeshellarg($snapshot) . ' -N ' . escapeshellarg($name), $output, $retval);
+  if ($retval != 0) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s from snapshot %s of %s!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), htmlspecialchars($snapshot, ENT_QUOTES, 'UTF-8'), htmlspecialchars($container, ENT_QUOTES, 'UTF-8')) . "</p>");
+    exec('logger "LXC: error: Failed to create Container ' . $name . ' from ' . $container . '-' . $snapshot . '"');
+    foreach ($output as $error) {
+      exec('logger "LXC: ' . $error . '"');
+    }
+    return;
+  }
   exec('logger "LXC: Container ' . $name . ' created from ' . $container . '-' . $snapshot . '"');
   $newContainer = new Container($name);
   $newContainer->setMac($mac);
@@ -539,7 +579,17 @@ function createFromSnapshot($name, $description, $container, $snapshot, $autosta
 }
 
 function createFromBackup($name, $description, $container, $backup, $autostart, $mac) {
-  exec('lxc-autobackup --restore --gui-restore=' . escapeshellarg($container . '_' . $backup) . ' --name=' . escapeshellarg($container) . ' --newname=' . escapeshellarg($name));
+  // lxc-autobackup prints its own "Creating <name> from backup file ..." line
+  // before it unpacks the archive, so no start line is needed here.
+  lxc_exec_stream('lxc-autobackup --restore --gui-restore=' . escapeshellarg($container . '_' . $backup) . ' --name=' . escapeshellarg($container) . ' --newname=' . escapeshellarg($name), $output, $retval);
+  if ($retval != 0) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_tf('ERROR, failed to create container %s from backup %s of %s!', htmlspecialchars($name, ENT_QUOTES, 'UTF-8'), htmlspecialchars($backup, ENT_QUOTES, 'UTF-8'), htmlspecialchars($container, ENT_QUOTES, 'UTF-8')) . "</p>");
+    exec('logger "LXC: error: Failed to create Container ' . $name . ' from backup ' . $container . '_' . $backup . '"');
+    foreach ($output as $error) {
+      exec('logger "LXC: ' . $error . '"');
+    }
+    return;
+  }
   $newContainer = new Container($name);
   $newContainer->setMac($mac);
   $newContainer->setAutostart(($autostart == "true" || $autostart == "1") ? 1 : 0);

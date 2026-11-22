@@ -269,6 +269,9 @@ class Container {
   }
 
   function destroyContainer() {
+    // lxc-destroy deletes the rootfs without printing anything, so publish the
+    // step up front; on a slow disk it can take a while.
+    lxc_out('<p>' . lxc_tf('Destroying Container %s', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . ' ...</p>');
     if ($this->state != "STOPPED") {
       exec('logger "LXC: Destroying container ' . $this->name . '"');
     }
@@ -282,14 +285,14 @@ class Container {
     if (is_dir($this->path . '/rootfs/var/empty')) {
       exec('find ' . escapeshellarg($this->path . '/rootfs/var/empty') . ' -exec chattr -i {} \; 2>/dev/null');
     }
-    exec('lxc-destroy -s ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
-    if ($retval == 1) {
+    lxc_exec_stream('lxc-destroy -s ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
+    if ($retval != 0) {
       lxc_out('<p class="lxc-error" style="color:red;">');
       lxc_out(lxc_tf('ERROR, failed to destroy %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>");
       exec('logger "LXC: error: Failed to destroy Container ' . $this->name . '"');
+      // lxc_exec_stream() already published every line as it arrived.
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
-        lxc_out(htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . "<br/>");
       }
     } else {
     if (file_exists($this->settings->default_path . '/custom-icons/' . $this->name . '.png')) {
@@ -315,8 +318,8 @@ class Container {
   function deleteSnapshot($snapshot) {
     exec('logger "LXC: Deleting snapshot ' . $snapshot . ' from container ' . $this->name . '"' );
     exec('umount ' . escapeshellarg($this->path . '/snaps/' . $snapshot . '/rootfs') . ' 2>/dev/null');
-    exec('lxc-snapshot -d ' . escapeshellarg($snapshot) . ' ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
-    if ($retval == 1) {
+    lxc_exec_stream('lxc-snapshot -d ' . escapeshellarg($snapshot) . ' ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
+    if ($retval != 0) {
       exec('logger "LXC: error: Failed to remove Snapshot ' . $snapshot . ' from Container ' . $this->name . '"');
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
@@ -329,14 +332,16 @@ class Container {
   function createSnapshot() {
     $settings = new Settings();
     $this->stopContainer();
-    exec('lxc-snapshot ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
-    if ($retval == 1) {
+    // lxc-snapshot copies the rootfs silently; say so before it starts.
+    lxc_out('<p>' . lxc_tf('Snapshotting Container %s', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . ' ...</p>');
+    lxc_exec_stream('lxc-snapshot ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
+    if ($retval != 0) {
       lxc_out('<p class="lxc-error" style="color:red;">');
       lxc_out(lxc_tf('ERROR, failed to create snapshot from %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>");
       exec('logger "LXC: error: Failed to create snapshot from Container ' . $this->name . '"');
+      // lxc_exec_stream() already published every line as it arrived.
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
-        lxc_out(htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . "<br/>");
       }
     } else {
       if($settings->default_bdevtype == "zfs") {
@@ -358,14 +363,16 @@ class Container {
   }
 
   function createBackup() {
-    exec('lxc-autobackup ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
-    if ($retval == 1) {
+    // lxc-autobackup prints its own start line, and the xz stage below it is
+    // silent for minutes: lxc_exec_stream() keeps the log alive with heartbeats.
+    lxc_exec_stream('lxc-autobackup ' . escapeshellarg($this->name) . ' 2>&1', $output, $retval);
+    if ($retval != 0) {
       lxc_out('<p class="lxc-error" style="color:red;">');
       lxc_out(lxc_tf('ERROR, failed to create backup from %s!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . "<br/><br/>");
       exec('logger "LXC: error: Failed to create backup from Container ' . $this->name . '"');
+      // lxc_exec_stream() already published every line as it arrived.
       foreach ($output as $error) {
         exec('logger "LXC: ' . $error . '"');
-        lxc_out(htmlspecialchars($error, ENT_QUOTES, 'UTF-8') . "<br/>");
       }
     } else {
       lxc_out('<p>' . lxc_tf('Backup from container %s created!', htmlspecialchars($this->name, ENT_QUOTES, 'UTF-8')) . '</p>');
