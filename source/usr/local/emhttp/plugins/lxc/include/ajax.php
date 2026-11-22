@@ -133,7 +133,7 @@ if (isset($_POST['lxc'])) {
     case 'createCONT':
       $name = sanitizeNewContainerName($_POST['name'] ?? '');
       if ($name !== null) {
-        createContainer($name, $_POST['description'] ?? '', $_POST['distribution'] ?? '', $_POST['release'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['mac'] ?? '');
+        createContainer($name, $_POST['description'] ?? '', $_POST['distribution'] ?? '', $_POST['release'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['mac'] ?? '', $_POST['memory'] ?? '', $_POST['cpus'] ?? '', $_POST['initcmd'] ?? '', $_POST['nettype'] ?? '', $_POST['netlink'] ?? '');
       }
       break;
     case 'copyCONT':

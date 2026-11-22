@@ -593,9 +593,9 @@ window.addEventListener("scroll", lxcReposition, true);
 window.addEventListener("resize", lxcReposition);
 
 // Function that creates a new container
-function createContainer(name, description, distribution, release, startcont, autostart, mac) {
+function createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink) {
   if (lxcTaskAvailable()) {
-    lxcTaskRun('createCONT', LXC_T("Create Container"), [name, description, distribution, release, startcont, autostart, mac]);
+    lxcTaskRun('createCONT', LXC_T("Create Container"), [name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink]);
     return;
   }
   let statusInterval;
@@ -624,7 +624,12 @@ function createContainer(name, description, distribution, release, startcont, au
         'release': release,
         'startcont': startcont,
         'autostart': autostart,
-        'mac': mac
+        'mac': mac,
+        'memory': memory,
+        'cpus': cpus,
+        'initcmd': initcmd,
+        'nettype': nettype,
+        'netlink': netlink
       },
       xhr: function() {
         // get the native XmlHttpRequest object
@@ -1140,8 +1145,13 @@ $(function() {
     let startcont = this.contStart.checked;
     let autostart = this.contAutostart.checked;
     let mac = this.contMac.value;
+    let memory = this.contMemory.value;
+    let cpus = this.contCpus.value;
+    let initcmd = this.contInitCmd.value;
+    let nettype = this.contNetType.value;
+    let netlink = this.contNetLink.value;
 
-    createContainer(name, description, distribution, release, startcont, autostart, mac);
+    createContainer(name, description, distribution, release, startcont, autostart, mac, memory, cpus, initcmd, nettype, netlink);
   });
 
   // Listener for copying container

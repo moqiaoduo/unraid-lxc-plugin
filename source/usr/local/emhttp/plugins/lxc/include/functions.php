@@ -369,10 +369,34 @@ function getCpus(){
   return array('allcpus' => $allCpus, 'vcpus' => $vCpus);
 }
 
-function createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac) {
+function createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory = '', $cpus = '', $initcmd = '', $nettype = '', $netlink = '') {
   $settings = new Settings();
   $default_path = rtrim($settings->default_path, '/');
   $pool = explode('/', $default_path)[2] ?? '';
+
+  // Optional resources are written into the container config after the create
+  // step, so they get the same validation the edit page applies.
+  $memory = trim((string)$memory);
+  $cpus = trim((string)$cpus);
+  $initcmd = trim((string)$initcmd);
+  $nettype = trim((string)$nettype);
+  $netlink = trim((string)$netlink);
+  if ($memory !== '' && (!ctype_digit($memory) || (int)$memory < 16 || (int)$memory > 4194304)) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_t('ERROR, invalid memory limit!') . '</p>');
+    return;
+  }
+  if ($cpus !== '' && !preg_match('/^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$/', $cpus)) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_t('ERROR, invalid CPU list!') . '</p>');
+    return;
+  }
+  if ($nettype !== '' && !in_array($nettype, ['veth', 'none'], true)) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_t('ERROR, invalid network type!') . '</p>');
+    return;
+  }
+  if ($netlink !== '' && !preg_match('/^[a-zA-Z0-9_.-]{1,32}$/', $netlink)) {
+    lxc_out('<p class="lxc-error" style="color:red;">' . lxc_t('ERROR, invalid bridge name!') . '</p>');
+    return;
+  }
 
   // The task runs in the background, so the form underneath stays usable and
   // can be submitted again before the first container exists.
@@ -408,6 +432,18 @@ function createContainer($name, $description, $distribution, $release, $startcon
     $container = new Container($name);
     $container->setMac($mac);
     $container->setAutostart(($autostart == "true" || $autostart == "1") ? 1 : 0);
+    $container->setMemoryLimit($memory === '' ? '' : ((int)$memory * 1048576));
+    $container->setCpuset($cpus);
+    $container->setInitCmd($initcmd);
+    if ($nettype !== '') {
+      $container->setNetworkType($nettype);
+    }
+    if ($nettype === 'none') {
+      // A "none" network has no bridge to point at.
+      $container->setNetworkLink('');
+    } elseif ($netlink !== '') {
+      $container->setNetworkLink($netlink);
+    }
     // lxc_exec_stream() already published every line as it arrived.
     if ($startcont == "true" || $startcont == "1") {
       $container->startContainer();

@@ -186,12 +186,12 @@ lxc_task_line($action);
 switch ($action) {
 
   case 'createCONT':
-    list($name, $description, $distribution, $release, $startcont, $autostart, $mac) = lxc_task_args($args, 7);
+    list($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink) = lxc_task_args($args, 12);
     $name = lxc_task_new_name($name);
     lxc_task_token($distribution);
     lxc_task_token($release);
     lxc_task_mac($mac);
-    createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac);
+    createContainer($name, $description, $distribution, $release, $startcont, $autostart, $mac, $memory, $cpus, $initcmd, $nettype, $netlink);
     lxc_task_require_created($name);
     lxc_task_finish(lxc_tf('Container %s created.', $name));
     break;
