@@ -193,7 +193,9 @@ function saveConfig(name) {
       html: true
     });
   }
-  let updatedConfig = $('#configEditor').val();
+  // The edit page renders the raw configuration in an Ace editor; fall back to
+  // the textarea value for older callers.
+  let updatedConfig = window.lxcConfigEditor ? window.lxcConfigEditor.getValue() : $('#configEditor').val();
   $.ajax({
     type: "POST",
     url: '/plugins/lxc/include/ajax.php',

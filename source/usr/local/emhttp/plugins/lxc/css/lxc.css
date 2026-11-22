@@ -273,10 +273,10 @@ html[data-theme="azure"] #configEditor {
     margin: 0;
 }
 
+/* Ace renders its own scrollbars and text metrics; the container only needs to
+   reserve the height, so padding/white-space/overflow must stay out of it. */
 #configEditor {
     height: 60vh;
     min-height: 320px;
-    padding: 10px;
-    white-space: pre;
-    overflow: auto;
+    box-sizing: border-box;
 }
