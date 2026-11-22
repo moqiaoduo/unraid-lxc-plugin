@@ -1324,6 +1324,10 @@ $(function() {
 })
 
 $(function () {
+  // A page that has no switch control does not load the switchbutton plugin.
+  if (typeof $.fn.switchButton !== 'function') {
+    return;
+  }
   // The script can be injected again on navigation: switching a second time
   // would append another label pair and break the layout.
   $('.autostart, .lxc-switch').each(function () {
