@@ -16,6 +16,11 @@
 
 <CHANGES>
 
+###2026.11.22.1200
+- Stream the log of copy, snapshot, backup and destroy while the operation runs instead of only at the end
+- Report a failed copy, snapshot restore or backup restore in the log
+- Show a heartbeat line when a long command prints nothing for a minute
+
 ###2026.11.22.1141
 - Run long operations through the unRAID 7.4 task tray, with live progress and minimize
 - Open the add, copy, restore and edit pages under /LXC so the sidebar entry stays highlighted
