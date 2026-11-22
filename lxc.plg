@@ -574,6 +574,8 @@
 <FILE Run="/bin/bash">
 <INLINE>
 rm -f $(ls &plugin;/&name;*.txz 2>/dev/null|grep -v '&version;')
+# Drop the cached page-title translations so the freshly installed lxc*.txt files are re-parsed.
+rm -f /usr/local/emhttp/languages/*/lxc*.dot
 </INLINE>
 </FILE>
 
@@ -805,6 +807,7 @@ rm -f /etc/lxc/default.conf /etc/lxc/lxc.conf
 if [ -d /etc/lxc ]; then rmdir /etc/lxc 2>/dev/null; fi
 rm -rf /var/cache/lxc
 rm -f /usr/bin/lxc-autosnapshot /usr/bin/lxc-autobackup /usr/bin/lxc-dirtobtrfs /usr/bin/lxc-dirtozfs
+rm -f /usr/local/emhttp/languages/*/lxc*.txt /usr/local/emhttp/languages/*/lxc*.dot
 rm -rf &plugin;
 rm -rf /tmp/lxc
 echo

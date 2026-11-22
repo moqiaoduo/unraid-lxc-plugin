@@ -391,6 +391,39 @@ class Container {
     setVariable($this->config, 'lxc.net.0.hwaddr', $mac);
   }
 
+  /**
+   * Write one of the lxc.* keys the GUI view owns. A blank value removes the
+   * key, because "key=" is not how LXC spells "use the default".
+   */
+  private function setOptional($key, $value) {
+    $value = trim((string)$value);
+    if ($value === '') {
+      removeVariable($this->config, $key);
+      return;
+    }
+    setVariable($this->config, $key, $value);
+  }
+
+  function setMemoryLimit($bytes) {
+    $this->setOptional('lxc.cgroup2.memory.max', $bytes);
+  }
+
+  function setCpuset($cpus) {
+    $this->setOptional('lxc.cgroup2.cpuset.cpus', $cpus);
+  }
+
+  function setInitCmd($cmd) {
+    $this->setOptional('lxc.init.cmd', $cmd);
+  }
+
+  function setNetworkType($type) {
+    $this->setOptional('lxc.net.0.type', $type);
+  }
+
+  function setNetworkLink($link) {
+    $this->setOptional('lxc.net.0.link', $link);
+  }
+
   function setDescription($desc){
     setVariable($this->config, '#container_description', $desc);
   }

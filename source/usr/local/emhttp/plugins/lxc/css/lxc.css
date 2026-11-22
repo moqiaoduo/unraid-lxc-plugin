@@ -249,3 +249,34 @@ html[data-theme="azure"] #configEditor {
     flex-direction: row;
     align-items: center;
 }
+
+/* Same problem for plain rows in the settings pages: a text input followed by
+   its unit ("seconds") would be split onto two lines by the column layout. */
+.inline-cell {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Container editor page: the title line carries the view switch, and the
+   configuration textarea fills the page instead of a fixed dialog height. */
+.lxc-edit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.lxc-edit-header h2 {
+    margin: 0;
+}
+
+#configEditor {
+    height: 60vh;
+    min-height: 320px;
+    padding: 10px;
+    white-space: pre;
+    overflow: auto;
+}

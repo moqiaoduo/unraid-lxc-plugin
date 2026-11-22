@@ -29,6 +29,14 @@ STAGE_DIR="${TMP_BUILD}/usr/local/emhttp/plugins/${PLUGIN_NAME}"
 mkdir -p "${STAGE_DIR}"
 cp -a "${SRC_DIR}/." "${STAGE_DIR}/"
 
+# Page titles are translated through /usr/local/emhttp/languages/<locale>/lxc.txt,
+# which lives outside the plugin directory and therefore needs its own copy step.
+LANG_DIR="${REPO_DIR}/source/usr/local/emhttp/languages"
+if [ -d "${LANG_DIR}" ]; then
+  mkdir -p "${TMP_BUILD}/usr/local/emhttp/languages"
+  cp -a "${LANG_DIR}/." "${TMP_BUILD}/usr/local/emhttp/languages/"
+fi
+
 # Normalize permissions
 chmod -R 755 "${TMP_BUILD}"
 

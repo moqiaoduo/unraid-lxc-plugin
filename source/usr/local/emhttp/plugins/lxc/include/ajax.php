@@ -131,13 +131,13 @@ if (isset($_POST['lxc'])) {
       }
       break;
     case 'createCONT':
-      $name = sanitizeContainerName($_POST['name'] ?? '');
+      $name = sanitizeNewContainerName($_POST['name'] ?? '');
       if ($name !== null) {
         createContainer($name, $_POST['description'] ?? '', $_POST['distribution'] ?? '', $_POST['release'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['mac'] ?? '');
       }
       break;
     case 'copyCONT':
-      $name = sanitizeContainerName($_POST['name'] ?? '');
+      $name = sanitizeNewContainerName($_POST['name'] ?? '');
       $source = sanitizeContainerName($_POST['container'] ?? '');
       if ($name !== null && $source !== null) {
         copyContainer($name, $_POST['description'] ?? '', $source, $_POST['autostart'] ?? '', $_POST['mac'] ?? '');
@@ -165,8 +165,75 @@ if (isset($_POST['lxc'])) {
         }
       }
       break;
+    case 'saveSettings':
+      // GUI side of the edit page: only the values the plugin owns. Anything
+      // LXC parses itself is left to saveConfig above.
+      header('Content-Type: application/json');
+      $cont = sanitizeContainerName($_POST['container'] ?? '');
+      if ($cont === null) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid container name!')]);
+        break;
+      }
+      $containerObj = new Container($cont);
+      if (!file_exists($containerObj->config)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, container not found!')]);
+        break;
+      }
+      $mac = trim((string)($_POST['mac'] ?? ''));
+      if ($mac !== '' && !preg_match('/^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/', $mac)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid MAC address!')]);
+        break;
+      }
+      $single = function ($key) {
+        return trim(str_replace(["\r", "\n"], ' ', (string)($_POST[$key] ?? '')));
+      };
+      $memory = trim((string)($_POST['memory'] ?? ''));
+      if ($memory !== '' && (!ctype_digit($memory) || (int)$memory < 16 || (int)$memory > 4194304)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid memory limit!')]);
+        break;
+      }
+      $cpus = trim((string)($_POST['cpus'] ?? ''));
+      if ($cpus !== '' && !preg_match('/^[0-9]+(-[0-9]+)?(,[0-9]+(-[0-9]+)?)*$/', $cpus)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid CPU list!')]);
+        break;
+      }
+      $nettype = trim((string)($_POST['nettype'] ?? ''));
+      if ($nettype !== '' && !in_array($nettype, ['veth', 'none'], true)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid network type!')]);
+        break;
+      }
+      $netlink = trim((string)($_POST['netlink'] ?? ''));
+      if ($netlink !== '' && !preg_match('/^[a-zA-Z0-9_.-]{1,32}$/', $netlink)) {
+        echo json_encode(['ok' => false, 'error' => lxc_t('ERROR, invalid bridge name!')]);
+        break;
+      }
+      $containerObj->setDescription($single('description'));
+      $containerObj->setAutostart((string)($_POST['autostart'] ?? '0') === '1' ? 1 : 0);
+      if ($mac !== '') {
+        $containerObj->setMac(strtoupper($mac));
+      }
+      $containerObj->setWebuiurl($single('webui'));
+      $containerObj->setMemoryLimit($memory === '' ? '' : ((int)$memory * 1048576));
+      $containerObj->setCpuset($cpus);
+      $containerObj->setInitCmd($single('initcmd'));
+      if ($nettype !== '') {
+        $containerObj->setNetworkType($nettype);
+      }
+      if ($nettype === 'none') {
+        // A "none" network has no bridge to point at.
+        $containerObj->setNetworkLink('');
+      } elseif ($netlink !== '') {
+        $containerObj->setNetworkLink($netlink);
+      }
+      $restarted = false;
+      if ($containerObj->state === 'RUNNING') {
+        $containerObj->restartContainer();
+        $restarted = true;
+      }
+      echo json_encode(['ok' => true, 'restarted' => $restarted]);
+      break;
     case 'fromSnapshot':
-      $name = sanitizeContainerName($_POST['name'] ?? '');
+      $name = sanitizeNewContainerName($_POST['name'] ?? '');
       $source = sanitizeContainerName($_POST['container'] ?? '');
       $snapshot = basename(trim((string)($_POST['snapshot'] ?? '')));
       if ($name !== null && $source !== null && preg_match('/^[a-zA-Z0-9_.-]+$/', $snapshot)) {
@@ -174,7 +241,7 @@ if (isset($_POST['lxc'])) {
       }
       break;
     case 'fromBackup':
-      $name = sanitizeContainerName($_POST['name'] ?? '');
+      $name = sanitizeNewContainerName($_POST['name'] ?? '');
       $source = sanitizeContainerName($_POST['container'] ?? '');
       $backup = basename(trim((string)($_POST['backup'] ?? '')));
       if ($name !== null && $source !== null && preg_match('/^[a-zA-Z0-9_.-]+$/', $backup)) {
@@ -210,7 +277,7 @@ if (isset($_POST['lxc'])) {
       }
       break;
     case 'createTEMPLATE':
-      $name = sanitizeContainerName($_POST['name'] ?? '');
+      $name = sanitizeNewContainerName($_POST['name'] ?? '');
       if ($name !== null) {
         createfromTemplate($name, $_POST['description'] ?? '', $_POST['repository'] ?? '', $_POST['webui'] ?? '', $_POST['icon'] ?? '', $_POST['startcont'] ?? '', $_POST['autostart'] ?? '', $_POST['convertbdev'] ?? '', $_POST['mac'] ?? '', $_POST['supportlink'] ?? '', $_POST['donatelink'] ?? '');
       }

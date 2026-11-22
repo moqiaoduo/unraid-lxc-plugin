@@ -1159,40 +1159,15 @@ $(function() {
   });
 
 
-  // Listener to edit container config
+  // Listener to edit container config. The editor is its own page now, so it
+  // follows the unRAID 7.4 layout instead of opening a Shadowbox overlay.
+  // closest() keeps the icon inside the link clickable too.
   document.addEventListener('click', function(e) {
-    if (e.target.id === "editconfig") {
+    var link = e.target.closest ? e.target.closest('#editconfig') : null;
+    if (link) {
       e.stopImmediatePropagation();
-      let container = $(e.target).attr("class");
-
-      Shadowbox.open({
-        content: '<div id="dialogContent" class="logLine spacing"></div>',
-        player: 'html',
-        title: LXC_T("Show/Edit Configuration"),
-        onClose: function() {
-          location.reload();
-        },
-        height: Math.min(screen.availHeight, 750),
-        width: Math.min(screen.availWidth, 900)
-      });
-
-      waitForElement("#dialogContent", function() {
-        $.ajax({
-          type: "POST",
-          url: '/plugins/lxc/include/ajax.php',
-          data: {
-            'lxc': '',
-            'action': "showConfig",
-            'container': container
-          },
-          success: function(data) {
-            let dialogContent = $("#dialogContent");
-            dialogContent.append('<textarea id="configEditor" style="width: 100%; max-width: 800px; height: 600px; margin: 0 auto; display: block; padding: 10px; font-family: monospace; box-sizing: border-box;">' + data + '</textarea>');
-            dialogContent.append('<p class="centered" style="color: red;">' + LXC_T("WARNING: Saving the configuration will restart a running container!") + '</p>');
-            dialogContent.append('<p class="centered"><button class="logLine" type="button" onclick="saveConfig(\'' + container + '\')">' + LXC_T("Save") + '</button><button class="logLine" type="button" onclick="top.Shadowbox.close();">' + LXC_T("Done") + '</button></p>');
-          }
-        });
-      });
+      e.preventDefault();
+      location.href = '/LXC/EditLXCContainer?cont=' + encodeURIComponent(link.className);
     }
   });
 

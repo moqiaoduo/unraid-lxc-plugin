@@ -1,24 +1,32 @@
 Menu="LXCSettings:4"
-Title="Update"
+Title="更新"
 Tag="arrow-circle-o-up "
 ---
 <?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 
 <b style="color: red"><?= lxc_t('It is recommended to first stop all containers and close all open LXC pages to avoid issues during the update!') ?></b>
-<?= lxc_t('You can stop all running container with this button:') ?>
-:  <a class="stopALLCONT"><input type="button" value="<?= lxc_t('Stop All LXC Containers') ?>"></a>
+<dl>
+<dt><?= lxc_t('You can stop all running container with this button:') ?></dt>
+<dd>
+<input type="button" class="stopALLCONT" style="width: auto;" value="<?= lxc_t('Stop All LXC Containers') ?>">
 
 <blockquote class="inline_help">
 <p><?= lxc_t('Don\'t forget to start your LXC containers again after doing the manual update check!') ?></p>
 </blockquote>
+</dd>
+</dl>
 
 <br/>
 
-<?= lxc_t('Check for new LXC version:') ?>
-:  <input type="button" id="updatecheck" value="<?= lxc_t('Check') ?>" onclick="openBox('/usr/local/emhttp/plugins/lxc/scripts/checkversion','<?= lxc_t('LXC Update Check') ?>',600,800,false)">
+<dl>
+<dt><?= lxc_t('Check for new LXC version:') ?></dt>
+<dd>
+<input type="button" id="updatecheck" value="<?= lxc_t('Check') ?>" onclick="openBox('/usr/local/emhttp/plugins/lxc/scripts/checkversion','<?= lxc_t('LXC Update Check') ?>',600,800,false)">
 
 <blockquote class="inline_help">
 <p><?= lxc_t('This button will start a update check and update the LXC package if a newer version than installed is available.<br/>It is recommended to reboot after the update but not strictly necessary!<br/><br/><b>Note:</b> A automatic update check is done on every reboot from your unRAID Server (requires a active Internet connection on boot).') ?></p>
 </blockquote>
+</dd>
+</dl>
 
 <div class="spinner"></div>

@@ -1,5 +1,5 @@
 Menu="LXCSettings:1"
-Title="General"
+Title="常规"
 Tag="wrench"
 ---
 <script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
@@ -27,8 +27,10 @@ body{-webkit-overflow-scrolling:touch}
 <script src="/plugins/lxc/js/lxc.js"></script>
 
 <form markdown="1" id="changecfg" method="post">
-<?= lxc_t('Enable LXC:') ?>
-: <select id="SERVICE" name="SERVICE">
+<dl>
+<dt><?= lxc_t('Enable LXC:') ?></dt>
+<dd>
+<select id="SERVICE" name="SERVICE">
   <?= mk_option($settings->status, 'disabled', lxc_t('No'))?>
   <?= mk_option($settings->status, 'enabled', lxc_t('Yes'))?>
   </select>
@@ -36,9 +38,13 @@ body{-webkit-overflow-scrolling:touch}
 <blockquote class="inline_help">
 <p><?= lxc_t('Enable or Disable the LXC service') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Default LXC storage path:') ?>
-: <input type="text" id="defaultdir" name="DEFAULTDIR" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="<?=is_dir('/mnt/')?'/mnt/':'/mnt'?>" value="<?=htmlspecialchars($settings->default_path)?>/" placeholder="<?= lxc_t('Click to Select') ?>" pattern="^[^\\]*/$" class="forbidSpace" required>
+<dl>
+<dt><?= lxc_t('Default LXC storage path:') ?></dt>
+<dd>
+<input type="text" id="defaultdir" name="DEFAULTDIR" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="<?=is_dir('/mnt/')?'/mnt/':'/mnt'?>" value="<?=htmlspecialchars($settings->default_path)?>/" placeholder="<?= lxc_t('Click to Select') ?>" pattern="^[^\\]*/$" class="forbidSpace" required>
   <?if (!$started):?><span><i class="fa fa-warning icon warning"></i> <?= lxc_t('Modify with caution: unable to validate path until Array is Started') ?></span>
   <?elseif (!is_dir($settings->default_path)):?><span><i class="fa fa-warning icon warning"></i> <?= lxc_t('Path does not exist, ') ?></span><span style="color: #ff0000;"><?= lxc_t('this path will be created after applying the settings!') ?></span><?endif;?>
   <br/>
@@ -54,9 +60,13 @@ body{-webkit-overflow-scrolling:touch}
 <p><?= lxc_t('<b style="color: #ff0000;">ATTENTION:</b><b> Don\'t share this directory via SMB or NFS or change the permissions from this directory! You will most likely break all your containers.</b>') ?></p>
 <p><?= lxc_t('Please note that the path requires a trailing / at the end.') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Default LXC backing storage type:') ?>
-: <select id="bdevtype" name="BDEVTYPE">
+<dl>
+<dt><?= lxc_t('Default LXC backing storage type:') ?></dt>
+<dd>
+<select id="bdevtype" name="BDEVTYPE">
   <?= mk_option($settings->default_bdevtype, 'dir', lxc_t('Directory (Default)'))?>
   <?php
   $path_fstype = exec("df -T $settings->default_path | awk 'NR==2 {print $2}'");
@@ -77,9 +87,13 @@ body{-webkit-overflow-scrolling:touch}
 <p><?= lxc_t('<b>NOTE:</b> Existing container will not be changed!<br/>You can use <code>lxc-dirtobtrfs</code> from the terminal to convert a container from Directory to BTRFS (this change is irreversible!).<br/>You can use <code>lxc-dirtozfs</code> from the terminal to convert a container from Directory to ZFS (this change is irreversible!).') ?></p>
 <p><?= lxc_t('<b style="color: #ff0000;">ATTENTION:</b> When using ZFS please only use the built in Snapshot function from the LXC plugin or <code>lxc-autosnapshot</code> from the command line otherwise you will most likely destroy your container!') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Default network interface:') ?>
-:  <select name="INTERFACENAME">
+<dl>
+<dt><?= lxc_t('Default network interface:') ?></dt>
+<dd>
+<select name="INTERFACENAME">
   <?php
   foreach($settings->available_interfaces as $item){
   if ( $item == $settings->default_interface ) {
@@ -90,8 +104,10 @@ body{-webkit-overflow-scrolling:touch}
 }
 ?>
   </select>
+  <span class="switch-cell">
   <input type="checkbox" name="CHANGENETCONT" <?php echo (!$started) ? "disabled" : ""; ?>>
   <label for="CHANGENETCONT"><?php echo (!$started) ? lxc_t('Array must be started to change networks from containers') : lxc_t('Change network from existing containers'); ?></label>
+  </span>
 
 <blockquote class="inline_help">
 <p><?= lxc_t('Select your default network interface') ?></p>
@@ -100,6 +116,8 @@ If a ethX or vhostX interface is selected the net type will be changed to maclva
 <b>Note:</b> If you are using ethX or vhostX you have to enable <b>Host access to custom networks</b> in your <a href="/Settings/DockerSettings" target="_blank">Docker Settings</a>') ?></p>
 <p><?= lxc_t('<b style="color: #ff0000;">ATTENTION:</b> If you are changing the interfaces from brX to ethX/vhostX or vice versa the network configurations from the existing containers will not be changed! To change the network configurations from the existing containers tick the checkbox "Change network from existing containers".') ?></p>
 </blockquote>
+</dd>
+</dl>
 
   <input type="hidden" name="TIMEOUT" value="<?php echo $settings->default_timeout;?>">
   <input type="hidden" name="AUTOSTART_DELAY" value="<?php echo $settings->default_startdelay;?>">
@@ -114,12 +132,16 @@ If a ethX or vhostX interface is selected the net type will be changed to maclva
 
 <p>&nbsp;</p>
 
-<?= lxc_t('Update configuration:') ?>
-:  <input type="submit" name="changeCFG" value="<?= lxc_t('Apply') ?>">
+<dl>
+<dt><?= lxc_t('Update configuration:') ?></dt>
+<dd>
+<input type="submit" name="changeCFG" value="<?= lxc_t('Apply') ?>">
 
 <blockquote class="inline_help">
 <p style="color: #ff0000;"><b><?= lxc_t('This will restart the LXC service and all your LXC containers!') ?></b></p>
 </blockquote>
+</dd>
+</dl>
 
 </form>
 

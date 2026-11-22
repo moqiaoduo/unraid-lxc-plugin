@@ -1,0 +1,13 @@
+Add LXC Container=添加 LXC 容器
+Copy LXC Container=复制 LXC 容器
+Edit LXC Container=编辑 LXC 容器
+Create LXC Container from Template=从模板创建 LXC 容器
+Create LXC Container from Backup=从备份创建 LXC 容器
+Create LXC Container from Snapshot=从快照创建 LXC 容器
+LXC Containers=LXC 容器
+Snapshots=快照
+Backups=备份
+Backup=备份
+General=常规
+Misc=其他
+Update=更新

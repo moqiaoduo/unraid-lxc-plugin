@@ -1,0 +1,193 @@
+Title="Edit LXC Container"
+Markdown="false"
+---
+<?php
+require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php';
+require_once '/usr/local/emhttp/plugins/lxc/include/Settings.php';
+require_once '/usr/local/emhttp/plugins/lxc/include/Container.php';
+
+$contParam = $_GET['cont'] ?? '';
+$cont = is_string($contParam) ? sanitizeContainerName($contParam) : null;
+$container = $cont !== null ? new Container($cont) : null;
+$valid = $container !== null && file_exists($container->config);
+$configText = $valid ? (string)file_get_contents($container->config) : '';
+$nameForJs = $valid ? $container->name : '';
+
+// getVariable() returns an escaped value, so decode it once for display. The
+// form then reads and writes plain text and the escaping cannot accumulate.
+$shown = function ($value) {
+  return htmlspecialchars(html_entity_decode((string)$value, ENT_QUOTES, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+};
+
+$rawMemory = (string)getVariable($container->config, 'lxc.cgroup2.memory.max');
+$memoryMb = '';
+if ($rawMemory !== '' && strtolower($rawMemory) !== 'max') {
+  if (ctype_digit($rawMemory)) {
+    $memoryMb = (string)(int)round($rawMemory / 1048576);
+  } elseif (preg_match('/^([0-9]+)\s*[Mm]$/', $rawMemory, $memoryMatch)) {
+    $memoryMb = $memoryMatch[1];
+  }
+}
+$cpuset = (string)getVariable($container->config, 'lxc.cgroup2.cpuset.cpus');
+$initcmd = (string)getVariable($container->config, 'lxc.init.cmd');
+$nettype = (string)getVariable($container->config, 'lxc.net.0.type');
+$netlink = (string)getVariable($container->config, 'lxc.net.0.link');
+$bridges = getInterfaces();
+?>
+<link rel="stylesheet" href="/plugins/lxc/css/lxc.css">
+<link type="text/css" rel="stylesheet" href="<?autov('/webGui/styles/jquery.switchbutton.css')?>">
+<script src="<?autov('/webGui/javascript/jquery.switchbutton.js')?>"></script>
+<?= lxc_i18n_js() ?>
+<script src="<?autov('/plugins/lxc/js/lxc.js')?>"></script>
+
+<div id="canvas">
+<?php if (!$valid): ?>
+  <p class="lxc-error" style="color:red;"><?= lxc_t('ERROR, container not found!') ?></p>
+  <p><a href="/LXC" class="button"><?= lxc_t('Done') ?></a></p>
+<?php else: ?>
+
+  <div class="lxc-edit-header">
+    <h2><?= htmlspecialchars($container->name, ENT_QUOTES, 'UTF-8') ?></h2>
+    <span class="switch-cell"><input type="checkbox" id="lxcEditView"></span>
+  </div>
+
+  <div id="lxcGuiView">
+    <form id="lxcSettingsForm" autocomplete="off">
+      <dl>
+        <dt><?= lxc_t('Description:') ?></dt>
+        <dd><input type="text" name="description" maxlength="200" value="<?= $shown($container->description) ?>"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Mac Address:') ?></dt>
+        <dd><input type="text" name="mac" style="text-transform:uppercase" value="<?= $shown($container->mac) ?>"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Web UI URL:') ?></dt>
+        <dd><input type="text" name="webui" value="<?= $shown($container->lxcwebui) ?>"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Memory Limit (MB):') ?></dt>
+        <dd><input type="number" name="memory" min="16" step="16" value="<?= $shown($memoryMb) ?>" placeholder="<?= lxc_t('Unlimited') ?>"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('CPU Cores:') ?></dt>
+        <dd><input type="text" name="cpus" value="<?= $shown($cpuset) ?>" placeholder="<?= lxc_t('All cores') ?>"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Init Command:') ?></dt>
+        <dd><input type="text" name="initcmd" value="<?= $shown($initcmd) ?>" placeholder="/sbin/init"></dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Network Type:') ?></dt>
+        <dd>
+          <select name="nettype">
+            <option value="veth" <?= ($nettype === '' || $nettype === 'veth') ? 'selected' : '' ?>>veth</option>
+            <option value="none" <?= ($nettype === 'none') ? 'selected' : '' ?>>none</option>
+          </select>
+        </dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Bridge:') ?></dt>
+        <dd>
+          <select name="netlink">
+            <option value=""><?= lxc_t('None') ?></option>
+            <?php if ($netlink !== '' && !in_array($netlink, $bridges, true)): ?>
+              <option value="<?= $shown($netlink) ?>" selected><?= $shown($netlink) ?></option>
+            <?php endif; ?>
+            <?php foreach ($bridges as $bridge): ?>
+              <option value="<?= $shown($bridge) ?>" <?= ($netlink === $bridge) ? 'selected' : '' ?>><?= $shown($bridge) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </dd>
+      </dl>
+      <dl>
+        <dt><?= lxc_t('Autostart:') ?></dt>
+        <dd class="switch-cell"><input type="checkbox" class="autostart" name="autostart" <?= ($container->autostart == 1) ? 'checked' : '' ?>></dd>
+      </dl>
+
+      <input type="submit" value="<?= lxc_t('Save') ?>">
+      <a href="/LXC" class="button"><?= lxc_t('Done') ?></a>
+    </form>
+  </div>
+
+  <div id="lxcConfigView" style="display:none;">
+    <form id="lxcConfigForm">
+      <textarea id="configEditor" spellcheck="false"><?= htmlspecialchars($configText, ENT_QUOTES, 'UTF-8') ?></textarea>
+      <p style="color:red;"><?= lxc_t('WARNING: Saving the configuration will restart a running container!') ?></p>
+      <input type="submit" value="<?= lxc_t('Save') ?>">
+      <a href="/LXC" class="button"><?= lxc_t('Done') ?></a>
+    </form>
+  </div>
+
+<?php endif; ?>
+</div>
+
+<script>
+$(function () {
+  var viewKey = 'lxcEditView';
+  var $toggle = $('#lxcEditView');
+  if (!$toggle.length) {
+    return;
+  }
+
+  var $gui = $('#lxcGuiView');
+  var $cfg = $('#lxcConfigView');
+
+  function applyView(configView) {
+    $gui.toggle(!configView);
+    $cfg.toggle(configView);
+    localStorage.setItem(viewKey, configView ? 'config' : 'gui');
+  }
+
+  var configView = localStorage.getItem(viewKey) === 'config';
+  $toggle.prop('checked', configView);
+  $toggle.switchButton({
+    labels_placement: 'right',
+    off_label: LXC_T('GUI'),
+    on_label: LXC_T('Configuration')
+  });
+  applyView(configView);
+  $toggle.on('change', function () {
+    applyView(this.checked);
+  });
+
+  // GUI view: the fields the plugin owns. Anything LXC parses itself stays in
+  // the configuration view, so the form never has to understand lxc.*.
+  $('#lxcSettingsForm').on('submit', function (event) {
+    event.preventDefault();
+    var $form = $(this);
+    var $button = $form.find('input[type=submit]').prop('disabled', true);
+    $.post('/plugins/lxc/include/ajax.php', {
+      lxc: '',
+      action: 'saveSettings',
+      container: <?= json_encode($nameForJs) ?>,
+      description: this.description.value,
+      mac: this.mac.value,
+      webui: this.webui.value,
+      memory: this.memory.value,
+      cpus: this.cpus.value,
+      initcmd: this.initcmd.value,
+      nettype: this.nettype.value,
+      netlink: this.netlink.value,
+      autostart: $form.find('input[name=autostart]').is(':checked') ? '1' : '0'
+    }, function (result) {
+      if (result && result.ok) {
+        location.reload();
+      } else {
+        $button.prop('disabled', false);
+        alert((result && result.error) || LXC_T('ERROR, failed to save the configuration!'));
+      }
+    }, 'json').fail(function () {
+      $button.prop('disabled', false);
+      alert(LXC_T('ERROR, failed to save the configuration!'));
+    });
+  });
+
+  // Configuration view: saveConfig() already writes the whole file and
+  // restarts the container when it is running.
+  $('#lxcConfigForm').on('submit', function (event) {
+    event.preventDefault();
+    saveConfig(<?= json_encode($nameForJs) ?>);
+  });
+});
+</script>

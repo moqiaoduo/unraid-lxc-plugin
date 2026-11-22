@@ -177,6 +177,23 @@ function sanitizeContainerName($name)
   return null;
 }
 
+/**
+ * Validation for names that are about to be created. unRAID 7.4's
+ * OpenTerminal.php only accepts identifiers that start with a letter or a
+ * digit (terminal_identifier()), so a container called ".foo" or "_foo"
+ * cannot be opened in the built-in terminal. Existing containers keep the
+ * looser sanitizeContainerName() above, otherwise they could no longer be
+ * stopped or deleted.
+ */
+function sanitizeNewContainerName($name)
+{
+  $clean = sanitizeContainerName($name);
+  if ($clean !== null && preg_match('/^[a-zA-Z0-9]/', $clean)) {
+    return $clean;
+  }
+  return null;
+}
+
 function getNewMacAddress() {
   return "52:54:00:" .strtoupper(implode(':', str_split(substr(md5(mt_rand()), 0, 6), 2)));
 }
@@ -303,6 +320,32 @@ function setVariable($file, $variable, $value) {
   }
   if (!$found) {
     $newFile[] = $variable . "=" . $value;
+  }
+
+  file_put_contents($file, implode(PHP_EOL, $newFile));
+}
+
+/**
+ * Drop a config key entirely. setVariable() can only rewrite or append, but an
+ * empty value is not the same as an absent key for several lxc.* options
+ * (lxc.cgroup2.memory.max="" is invalid where "no limit" is what we want).
+ */
+function removeVariable($file, $variable) {
+  if (empty($file) || !file_exists($file)) {
+    return;
+  }
+  $contents = @file_get_contents($file);
+  if ($contents === false) {
+    return;
+  }
+
+  $newFile = [];
+  foreach (explode("\n", $contents) as $line) {
+    $trimmed = ltrim($line);
+    if (strpos($trimmed, '#') !== 0 && (strpos($trimmed, $variable . '=') === 0 || strpos($trimmed, $variable . ' =') === 0)) {
+      continue;
+    }
+    $newFile[] = $line;
   }
 
   file_put_contents($file, implode(PHP_EOL, $newFile));

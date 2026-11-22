@@ -76,6 +76,20 @@ function lxc_task_name($value)
 }
 
 /**
+ * Validate a name that is about to be created. unRAID 7.4 cannot open a
+ * terminal for names that start with anything but a letter or a digit, so
+ * those are refused here while the older names stay manageable above.
+ */
+function lxc_task_new_name($value)
+{
+  $name = sanitizeNewContainerName($value);
+  if ($name === null) {
+    lxc_task_fail(lxc_t('ERROR, invalid container name!'));
+  }
+  return $name;
+}
+
+/**
  * Validate a distribution, release or snapshot token.
  */
 function lxc_task_token($value)
@@ -173,7 +187,7 @@ switch ($action) {
 
   case 'createCONT':
     list($name, $description, $distribution, $release, $startcont, $autostart, $mac) = lxc_task_args($args, 7);
-    $name = lxc_task_name($name);
+    $name = lxc_task_new_name($name);
     lxc_task_token($distribution);
     lxc_task_token($release);
     lxc_task_mac($mac);
@@ -184,7 +198,7 @@ switch ($action) {
 
   case 'createTEMPLATE':
     list($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink) = lxc_task_args($args, 11);
-    $name = lxc_task_name($name);
+    $name = lxc_task_new_name($name);
     lxc_task_mac($mac);
     createfromTemplate($name, $description, $repository, $webui, $icon, $startcont, $autostart, $convertbdev, $mac, $supportlink, $donatelink);
     lxc_task_require_created($name);
@@ -193,7 +207,7 @@ switch ($action) {
 
   case 'copyCONT':
     list($name, $description, $container, $autostart, $mac) = lxc_task_args($args, 5);
-    $name = lxc_task_name($name);
+    $name = lxc_task_new_name($name);
     $container = lxc_task_name($container);
     lxc_task_mac($mac);
     lxc_task_require_container($container);
@@ -204,7 +218,7 @@ switch ($action) {
 
   case 'fromSnapshot':
     list($name, $description, $container, $snapshot, $autostart, $mac) = lxc_task_args($args, 6);
-    $name = lxc_task_name($name);
+    $name = lxc_task_new_name($name);
     $container = lxc_task_name($container);
     lxc_task_token($snapshot);
     lxc_task_mac($mac);
@@ -216,7 +230,7 @@ switch ($action) {
 
   case 'fromBackup':
     list($name, $description, $container, $backup, $autostart, $mac) = lxc_task_args($args, 6);
-    $name = lxc_task_name($name);
+    $name = lxc_task_new_name($name);
     $container = lxc_task_name($container);
     lxc_task_token($backup);
     lxc_task_mac($mac);

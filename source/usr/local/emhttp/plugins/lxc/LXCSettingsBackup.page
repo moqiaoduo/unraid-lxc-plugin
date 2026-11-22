@@ -1,11 +1,13 @@
 Menu="LXCSettings:3"
-Title="Backup"
+Title="备份"
 Tag="archive"
 ---
 <?php require_once '/usr/local/emhttp/plugins/lxc/include/i18n.php'; ?>
 <form markdown="1" id="changebackupcfg" method="post" >
-<?= lxc_t('Enable Global Backup settings:') ?>
-: <select id="backup_enabled" name="BACKUP_ENABLED">
+<dl>
+<dt><?= lxc_t('Enable Global Backup settings:') ?></dt>
+<dd>
+<select id="backup_enabled" name="BACKUP_ENABLED">
   <?= mk_option($settings->backup_enabled, 'disabled', lxc_t('No'))?>
   <?= mk_option($settings->backup_enabled, 'enabled', lxc_t('Yes'))?>
   </select>
@@ -15,27 +17,39 @@ Tag="archive"
 <p><?= lxc_t('If enabled a additional Backups tab on the <a href="/LXC" target="_blank">LXC</a> page will show up.') ?></p>
 <p><?= lxc_t('This also allows you to more easily create backups with <code>lxc-autobackup</code> from the command line eg: <code>lxc-autobackup lxccontainername</code>') ?></p>
 </blockquote>
+</dd>
+</dl>
 
 <? if ($settings->backup_enabled === 'enabled') { ?>
 
-<?= lxc_t('Default Backup path:') ?>
-: <input type="text" id="backupdir" name="BACKUPDIR" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="<?=is_dir('/mnt/')?'/mnt/':'/mnt'?>" value="<?=htmlspecialchars($settings->backup_path)?>" placeholder="Click to Select" pattern="^[^\\]*/$" class="forbidSpace" required>
+<dl>
+<dt><?= lxc_t('Default Backup path:') ?></dt>
+<dd>
+<input type="text" id="backupdir" name="BACKUPDIR" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="HIDE_FILES_FILTER" data-pickroot="<?=is_dir('/mnt/')?'/mnt/':'/mnt'?>" value="<?=htmlspecialchars($settings->backup_path)?>" placeholder="Click to Select" pattern="^[^\\]*/$" class="forbidSpace" required>
   <? if(!is_dir($settings->backup_path)):?><span><i class="fa fa-warning icon warning"></i> <?= lxc_t('Path does not exist, ') ?></span><span style="color: #ff0000;"><?= lxc_t('this path will be created after applying the settings!') ?></span> <? endif;?>
 
 <blockquote class="inline_help">
 <p><?= lxc_t('The path where you want to store your LXC container backups (this path should not be in the Default LXC path!).') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Backups to keep:') ?>
-:  <input type="text" id="backupstokeep" name="BACKUPS_TO_KEEP" required="true" pattern="[1-9][0-9]*" style="width: 40px" value="<?php echo $settings->backup_keep;?>" class="forbidSpace" required>
+<dl>
+<dt><?= lxc_t('Backups to keep:') ?></dt>
+<dd>
+<span class="inline-cell"><input type="text" id="backupstokeep" name="BACKUPS_TO_KEEP" required="true" pattern="[1-9][0-9]*" style="width: 40px" value="<?php echo $settings->backup_keep;?>" class="forbidSpace" required></span>
 
 <blockquote class="inline_help">
 <p><?= lxc_t('Specify how many backups you want to keep (must be an integer and greater than 0).') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Compression Ratio:') ?>
+<dl>
+<dt><?= lxc_t('Compression Ratio:') ?></dt>
+<dd>
 <?php $selectedRatio = (isset($settings->backup_compression) && trim((string)$settings->backup_compression) !== '') ? $settings->backup_compression : "6"; ?>
-: <select id="compression_ratio" name="COMPRESSION_RATIO">
+<select id="compression_ratio" name="COMPRESSION_RATIO">
   <?php
   for ($i = 0; $i <= 9; $i++) {
     echo "<option value='$i'" . ($i == $selectedRatio ? ' selected' : '') . ">$i</option>";
@@ -46,14 +60,18 @@ Tag="archive"
 <p><?= lxc_t('Select your compression ratio 0=lowest, 9=highest (default: 6)') ?></p>
 <p><b style="color: #ff0000;"><?= lxc_t('ATTENTION:') ?></b> <?= lxc_t('Values between 7 and 9 will require at least 12GB of free RAM during the compression!') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('CPU Threads:') ?>
+<dl>
+<dt><?= lxc_t('CPU Threads:') ?></dt>
+<dd>
 <?php
   $cpu_threads = (int)trim(shell_exec('nproc') ?? '1');
   if ($cpu_threads < 1) $cpu_threads = 1;
   $selectedThreads = (isset($settings->backup_threads) && trim((string)$settings->backup_threads) !== '') ? (int)$settings->backup_threads : max(1, intdiv($cpu_threads, 2));
 ?>
-: <select id="cpu_threads" name="CPU_THREADS">
+<select id="cpu_threads" name="CPU_THREADS">
   <?php
   for ($i = 1; $i <= $cpu_threads; $i++) {
     echo "<option value='$i'" . ($i == $selectedThreads ? ' selected' : '') . ">$i</option>";
@@ -64,12 +82,18 @@ Tag="archive"
 <p><?= lxc_t('Select how many CPU threads you want to use for the compression task (default: half of all your threads).') ?></p>
 <p><b style="color: #ff0000;"><?= lxc_t('ATTENTION:') ?></b> <?= lxc_t('If you are selecting all threads this can have a serious impact on your system and maybe also slow down the GUI!') ?></p>
 </blockquote>
+</dd>
+</dl>
 
-<?= lxc_t('Use Snapshot:') ?>
-: <select id="use_snapshot" name="USE_SNAPSHOT">
+<dl>
+<dt><?= lxc_t('Use Snapshot:') ?></dt>
+<dd>
+<select id="use_snapshot" name="USE_SNAPSHOT">
   <?= mk_option($settings->backup_use_snapshot, 'disabled', lxc_t('No'))?>
   <?= mk_option($settings->backup_use_snapshot, 'enabled', lxc_t('Yes'))?>
   </select>
+</dd>
+</dl>
 
 <?php } else { ?>
 
@@ -87,12 +111,16 @@ Tag="archive"
 
 <p>&nbsp;</p>
 
-<?= lxc_t('Update configuration:') ?>
-:  <input type="submit" name="changeBACKUP" value="<?= lxc_t('Apply') ?>">
+<dl>
+<dt><?= lxc_t('Update configuration:') ?></dt>
+<dd>
+<input type="submit" name="changeBACKUP" value="<?= lxc_t('Apply') ?>">
 
 <blockquote class="inline_help">
 <p><?= lxc_t('This will NOT restart the LXC service') ?></p>
 </blockquote>
+</dd>
+</dl>
 
 </form>
 
