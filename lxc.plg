@@ -16,6 +16,15 @@
 
 <CHANGES>
 
+###2026.11.22.1141
+- Run long operations through the unRAID 7.4 task tray, with live progress and minimize
+- Open the add, copy, restore and edit pages under /LXC so the sidebar entry stays highlighted
+- Edit a container on a dedicated page with a settings view and an Ace configuration editor
+- Create, import, edit and delete templates from the add container page
+- Set memory, CPUs, init command, network and a custom icon when creating a container
+- Refuse container names that start with "." or "_" so the 7.4 console can open them
+- Translate the new page titles and the LXC settings tabs
+
 ###2026.11.21.1009
 - Fill in the CPUs column after a container starts, without reloading the page
 
